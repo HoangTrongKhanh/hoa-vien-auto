@@ -58,6 +58,11 @@ class Prefs(context: Context) {
         get() = p.getBoolean("running", false)
         set(v) = p.edit().putBoolean("running", v).apply()
 
+    /** Người dùng đã đóng bảng nổi (nút ✕); mở lại bằng nút Hiện bảng nổi trong app. */
+    var overlayClosed: Boolean
+        get() = p.getBoolean("overlay_closed", false)
+        set(v) = p.edit().putBoolean("overlay_closed", v).apply()
+
     /** Vị trí bảng nổi người dùng đã kéo tới, -1 = mặc định. */
     var overlayX: Int
         get() = p.getInt("overlay_x", -1)

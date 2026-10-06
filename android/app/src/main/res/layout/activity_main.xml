@@ -21,6 +21,13 @@
             android:textSize="16sp"
             android:textStyle="bold" />
 
+        <Button
+            android:id="@+id/reopenOverlay"
+            style="@style/StepButton"
+            android:layout_marginTop="8dp"
+            android:text="Hiện bảng nổi"
+            android:visibility="gone" />
+
         <!-- Bắt đầu -->
         <TextView
             style="@style/Header"
@@ -77,7 +84,7 @@
 
         <TextView
             style="@style/Hint"
-            android:text="• ▶ Chạy: quét cả danh sách, xóa nhiệm vụ điểm thấp, lặp lại theo chu kỳ.\n• Thử 1 lượt: chỉ báo những nhiệm vụ sẽ xóa, không xóa thật.\n• ■: dừng.  ≡: kéo để dời bảng nổi, chạm để thu gọn." />
+            android:text="• ▶ Chạy: quét cả danh sách, xóa nhiệm vụ điểm thấp, lặp lại theo chu kỳ.\n• Thử 1 lượt: chỉ báo những nhiệm vụ sẽ xóa, không xóa thật.\n• ■: dừng.  ≡: kéo để dời bảng nổi, chạm để thu gọn.\n• ✕: đóng bảng nổi (dừng bot nếu đang chạy). Mở lại bằng nút Hiện bảng nổi ở đầu màn hình này." />
 
         <!-- Cài đặt -->
         <TextView

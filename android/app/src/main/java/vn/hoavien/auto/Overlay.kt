@@ -92,7 +92,8 @@ class Overlay(private val svc: BotService) {
         for (b in actions) row.addView(b, margins())
         stopButton = chip("■", 0xFFC62828.toInt()) { svc.stopJob() }.also { row.addView(it, margins()) }
         moreButton = chip("⋯", 0xFF455A64.toInt()) { setProbesShown(!probesShown) }.also { row.addView(it, margins()) }
-        extras += actions + stopButton + moreButton
+        val close = chip("✕", 0xFF455A64.toInt()) { svc.closeOverlay() }.also { row.addView(it, margins()) }
+        extras += actions + stopButton + moreButton + close
         root.addView(row)
 
         // Các bài thử từng thao tác (dùng khi cài lên máy mới), ẩn sau nút ⋯.

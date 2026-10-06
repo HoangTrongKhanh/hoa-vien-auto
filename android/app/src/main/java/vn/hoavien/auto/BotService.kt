@@ -87,9 +87,10 @@ class BotService : AccessibilityService() {
         bot = Bot(this)
         probes = Probes(this)
         overlay = Overlay(this).also { it.show() }
+        applyOverlayVisibility()
         instance = this
         AppLog.i("Đã bật dịch vụ Trợ năng. Mở game ở bảng Nhiệm Vụ rồi bấm ▶ trên bảng nổi.")
-        if (prefs.running) {
+        if (prefs.running && !prefs.overlayClosed) {
             AppLog.i("Tiếp tục chạy (dịch vụ vừa khởi động lại).")
             startBot()
         } else {
@@ -137,7 +138,8 @@ class BotService : AccessibilityService() {
             main.post {
                 if (job === j) {
                     onJobChanged(null)
-                    BotStatus.set("Đã dừng · hôm nay đã xóa ${prefs.deletedToday()}")
+                    val what = if (prefs.overlayClosed) "Bảng nổi đã đóng" else "Đã dừng"
+                    BotStatus.set("$what · hôm nay đã xóa ${prefs.deletedToday()}")
                 }
             }
         }
@@ -185,9 +187,41 @@ class BotService : AccessibilityService() {
         AppLog.i("Đã tắt dịch vụ Trợ năng.")
     }
 
-    /** Ẩn bảng nổi khi màn hình chính của app đang mở (để không che nội dung), hiện lại khi rời đi. */
-    fun setOverlayVisible(visible: Boolean) {
-        overlay?.setVisible(visible)
+    private var appScreenOpen = false       // màn hình chính của app đang mở: ẩn bảng nổi để không che nội dung
+    private var overlayTempHidden = false   // ẩn tạm (bài thử kiểm tra bảng nổi có lọt vào ảnh chụp không)
+
+    private fun applyOverlayVisibility() {
+        overlay?.setVisible(!prefs.overlayClosed && !appScreenOpen && !overlayTempHidden)
+    }
+
+    fun setAppScreenOpen(open: Boolean) {
+        appScreenOpen = open
+        applyOverlayVisibility()
+    }
+
+    fun setOverlayTempHidden(hidden: Boolean) {
+        overlayTempHidden = hidden
+        applyOverlayVisibility()
+    }
+
+    /** Nút ✕: đóng bảng nổi. Bảng nổi giữ màn hình sáng cho bot nên đóng nó thì dừng bot luôn. */
+    fun closeOverlay() {
+        if (job?.isActive == true) {
+            stopJob()
+            AppLog.i("Đã đóng bảng nổi và dừng bot. Mở lại bằng nút Hiện bảng nổi trong app.")
+        } else {
+            AppLog.i("Đã đóng bảng nổi. Mở lại bằng nút Hiện bảng nổi trong app.")
+        }
+        prefs.overlayClosed = true
+        applyOverlayVisibility()
+        BotStatus.set("Bảng nổi đã đóng · hôm nay đã xóa ${prefs.deletedToday()}")
+    }
+
+    /** Nút Hiện bảng nổi trong app. */
+    fun reopenOverlay() {
+        prefs.overlayClosed = false
+        applyOverlayVisibility()
+        BotStatus.set("Sẵn sàng · hôm nay đã xóa ${prefs.deletedToday()}")
     }
 
     /** Vùng nút ≡ của bảng nổi trên màn hình, để kiểm tra bảng nổi có lọt vào ảnh chụp không. */

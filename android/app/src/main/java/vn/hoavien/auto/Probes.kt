@@ -113,12 +113,12 @@ class Probes(private val svc: BotService) {
      *  bảng nổi hơi trong suốt nên màu trong ảnh bị trộn với game phía sau.) */
     private suspend fun overlayInShotCheck() {
         val box = svc.overlayHandle() ?: return
-        svc.setOverlayVisible(false)
+        svc.setOverlayTempHidden(true)
         val hidden = try {
             delay(200)
             shot()
         } finally {
-            svc.setOverlayVisible(true)
+            svc.setOverlayTempHidden(false)
         }
         delay(200)
         val shown = shot()

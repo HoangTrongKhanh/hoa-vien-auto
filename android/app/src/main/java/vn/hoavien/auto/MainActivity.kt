@@ -49,6 +49,11 @@ class MainActivity : Activity() {
             startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)))
         }
         findViewById<View>(R.id.allowNotify).setOnClickListener { askNotifications() }
+        findViewById<View>(R.id.reopenOverlay).setOnClickListener {
+            BotService.instance?.reopenOverlay()
+            Toast.makeText(this, "Bảng nổi sẽ hiện khi bạn rời màn hình này", Toast.LENGTH_SHORT).show()
+            showSteps()
+        }
         findViewById<View>(R.id.openGame).setOnClickListener {
             val launch = packageManager.getLaunchIntentForPackage(GAME_PACKAGE)
             if (launch != null) startActivity(launch)
@@ -84,7 +89,7 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        BotService.instance?.setOverlayVisible(false)
+        BotService.instance?.setAppScreenOpen(true)
         showSteps()
         showStatus()
         AppLog.addListener(logListener)
@@ -95,7 +100,7 @@ class MainActivity : Activity() {
     override fun onPause() {
         BotService.instance?.let {
             it.refreshOverlay()
-            it.setOverlayVisible(true)
+            it.setAppScreenOpen(false)
         }
         AppLog.removeListener(logListener)
         BotStatus.removeListener(statusListener)
@@ -121,6 +126,7 @@ class MainActivity : Activity() {
         // "Cài đặt bị hạn chế" chỉ có từ Android 13, với app cài từ file APK.
         val restricted = !a11y && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
         for (id in listOf(R.id.restrictedHint, R.id.openAppInfo)) findViewById<View>(id).visibility = if (restricted) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.reopenOverlay).visibility = if (a11y && prefs.overlayClosed) View.VISIBLE else View.GONE
         mark(R.id.step2, notify)
         findViewById<View>(R.id.allowNotify).visibility = if (notify) View.GONE else View.VISIBLE
     }
