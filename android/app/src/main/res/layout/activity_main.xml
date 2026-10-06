@@ -44,7 +44,7 @@
         <TextView
             android:id="@+id/restrictedHint"
             style="@style/Hint"
-            android:text="Nếu máy báo &quot;Cài đặt bị hạn chế&quot; (hoặc công tắc bị mờ): bấm nút dưới → ⋮ ở góc trên phải → Cho phép cài đặt bị hạn chế, xác nhận bằng vân tay/mã PIN, rồi quay lại bật Trợ năng." />
+            android:text="Nếu máy báo &quot;Ứng dụng đã bị từ chối cấp quyền&quot; (hoặc ghi &quot;Do chế độ Cài đặt hạn chế kiểm soát&quot;): bấm Đóng → bấm nút dưới → ⋮ ở góc trên phải → Cho phép cài đặt bị hạn chế → xác nhận bằng vân tay/mã PIN → quay lại bật Trợ năng.\nNút ⋮ chỉ hiện sau khi bạn đã thử bật Trợ năng và bị báo như trên." />
 
         <Button
             android:id="@+id/openAppInfo"

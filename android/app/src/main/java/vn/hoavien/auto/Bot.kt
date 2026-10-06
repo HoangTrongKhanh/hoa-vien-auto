@@ -55,6 +55,7 @@ private const val SCROLL_WAIT = 50L         // kéo có dừng trước khi nh�
 private const val END_CONFIRM_DRAGS = 3
 private const val END_CONFIRM_DRAGS_KNOWN_END = 1    // đã thấy ô cuối (số thứ tự lớn nhất từng gặp): không cần kéo lại
 private const val END_CONFIRM_DRAGS_EARLY = 6         // chưa tới số ô lớn nhất từng gặp: kéo thêm, chờ game nạp
+private const val END_RETRIES_EARLY = 2               // ...và nếu vẫn bị cho là cuối thì kéo lại thêm bấy nhiêu đợt
 private const val END_RETRY_WAIT = 1000L
 private const val SETTLE_TIMEOUT = 4500L    // ở cuối danh sách: chờ hiệu ứng nảy đàn hồi kết thúc
 private const val TOP_TIMEOUT = 2000L       // vuốt lên đầu: chờ danh sách dừng ở trên cùng
@@ -84,6 +85,7 @@ class Bot(private val svc: BotService) {
     private var unreadable = 0
     private var failures = 0
     private var maxCard = 0                 // số thứ tự ô lớn nhất đã thấy trong lượt
+    private var lowerSeen = 0               // lượt trước kết thúc ở số ô thấp hơn tổng đã biết (để xác nhận lần 2)
     private var noDeleteButton = 0          // số ô liên tiếp không có nút Xóa (tài khoản không có chức năng xóa?)
     private var notReadyReason = ""         // lý do lượt gần nhất không quét được, để báo cho người dùng
     private var batteryWarned = false
@@ -240,9 +242,19 @@ class Bot(private val svc: BotService) {
         }
         if (!complete) AppLog.i("Cuộn không ổn định, lượt này có thể đã sót một số ô.")
         val known = svc.prefs.knownLastCard
-        if (complete && maxCard > 0 && maxCard != known) {
+        if (complete && maxCard > known) {
             if (known > 0) AppLog.i("Danh sách giờ có $maxCard ô (lần trước $known).")
             svc.prefs.knownLastCard = maxCard
+            lowerSeen = 0
+        } else if (complete && maxCard in 1 until known) {
+            // Chỉ hạ tổng số ô khi 2 lượt liền cùng kết thúc ở một số thấp hơn (tránh một lần danh sách tạm cụt).
+            if (lowerSeen == maxCard) {
+                AppLog.i("Danh sách giờ có $maxCard ô (lần trước $known).")
+                svc.prefs.knownLastCard = maxCard
+                lowerSeen = 0
+            } else {
+                lowerSeen = maxCard
+            }
         }
         totalDeleted += deleted
         val reach = if (maxCard > 0) " Đã quét tới ô $maxCard." else ""
@@ -384,10 +396,19 @@ class Bot(private val svc: BotService) {
                 maxCard >= known -> END_CONFIRM_DRAGS_KNOWN_END
                 else -> END_CONFIRM_DRAGS_EARLY
             }
-            val (next, status) = scrollDown(base, confirm)
+            var (next, status) = scrollDown(base, confirm)
+            // Chưa tới tổng số ô đã biết mà bị cho là cuối danh sách: chờ rồi kéo lại vài lần nữa cho chắc.
+            var endRetries = 0
+            while (status == Scan.END && known > 0 && maxCard in 1 until known && endRetries < END_RETRIES_EARLY) {
+                endRetries++
+                delay(END_RETRY_WAIT)
+                val r = scrollDown(next, END_CONFIRM_DRAGS)
+                next = r.first
+                status = r.second
+            }
             img = next
             if (status == Scan.END && known > 0 && maxCard in 1 until known) {
-                AppLog.i("Danh sách chỉ hiện tới ô $maxCard (lần trước có $known ô), dù đã kéo $confirm lần.")
+                AppLog.i("Danh sách chỉ hiện tới ô $maxCard (lần trước có $known ô).")
             }
             if (status == Scan.LOST && prevMax > 0) {
                 // Không đo được độ cuộn, nhưng số thứ tự ô vẫn nối tiếp thì cứ quét tiếp, không cần quét lại từ đầu.
@@ -433,7 +454,12 @@ class Bot(private val svc: BotService) {
             img = last
             val noMove = cpu { gridUnchanged(before, img, u) }  // vuốt mà không nhúc nhích -> đã ở đầu
             before.release()
-            if (state == "top" || noMove) return img
+            if (state == "top" || noMove) {
+                // Thấy ô số 1 có thể là lúc danh sách còn đang nảy ở đầu: chờ đứng yên rồi mới kéo trang đầu.
+                val still = waitStill(img)
+                img.release()
+                return still
+            }
         }
         AppLog.i("Cuộn lên đầu chưa ổn định, vẫn tiếp tục.")
         return img
