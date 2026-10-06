@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 
 plugins {
     id("com.android.application")
@@ -13,8 +14,23 @@ android {
         applicationId = "vn.hoavien.auto"
         minSdk = 30             // AccessibilityService.takeScreenshot() cần Android 11
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1-thu"
+        versionCode = 10
+        versionName = "1.0"
+    }
+
+    // Khóa ký bản phát hành nằm ngoài repo (android/keystore.properties trỏ tới file .jks). Không có thì bản release
+    // ký tạm bằng khóa debug - chỉ để thử, không phát cho người dùng vì sau này không cài đè được.
+    val keystoreFile = rootProject.file("keystore.properties")
+    signingConfigs {
+        if (keystoreFile.exists()) {
+            create("phatHanh") {
+                val p = Properties().apply { keystoreFile.inputStream().use { load(it) } }
+                storeFile = file(p.getProperty("storeFile"))
+                storePassword = p.getProperty("storePassword")
+                keyAlias = p.getProperty("keyAlias")
+                keyPassword = p.getProperty("keyPassword")
+            }
+        }
     }
 
     // Ảnh mẫu dùng chung với bản Python: đóng gói thẳng thư mục templates/ ở gốc dự án.
@@ -27,7 +43,7 @@ android {
         release {
             ndk { abiFilters += listOf("arm64-v8a") }               // điện thoại/máy tính bảng thật
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")   // bản thử: ký bằng khoá debug để cài thẳng
+            signingConfig = signingConfigs.findByName("phatHanh") ?: signingConfigs.getByName("debug")
         }
     }
     compileOptions {
@@ -42,6 +58,18 @@ android {
 kotlin {
     compilerOptions {
         jvmTarget.set(JvmTarget.JVM_17)
+    }
+}
+
+// ./gradlew phatHanh: build bản release rồi chép ra thư mục gốc dự án thành HoaVienAuto-<phiên bản>.apk để gửi đi.
+tasks.register("phatHanh") {
+    dependsOn("assembleRelease")
+    doLast {
+        check(rootProject.file("keystore.properties").exists()) { "Thiếu android/keystore.properties (khóa ký bản phát hành)" }
+        val apk = layout.buildDirectory.file("outputs/apk/release/app-release.apk").get().asFile
+        val out = rootProject.projectDir.parentFile.resolve("HoaVienAuto-${android.defaultConfig.versionName}.apk")
+        apk.copyTo(out, overwrite = true)
+        println("Đã xuất ${out.path}")
     }
 }
 
