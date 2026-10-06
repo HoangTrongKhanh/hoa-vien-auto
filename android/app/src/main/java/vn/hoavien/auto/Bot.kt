@@ -38,7 +38,8 @@ private const val EXPECTED_SHIFT = 520
 // Sau mỗi lần bấm không chờ cố định mà chụp lặp lại tới khi giao diện đổi xong (mỗi lần chụp ~0.33s).
 private const val POLL_FIRST_WAIT = 150L    // chờ trước lần chụp đầu để game kịp phản hồi
 private const val SELECT_TIMEOUT = 1200L    // chọn ô: khung chi tiết hiện đúng ô vừa bấm
-private const val DIALOG_TIMEOUT = 4000L    // bấm Xóa: hộp thoại xác nhận hiện xong (đôi khi hiện chậm)
+private const val DIALOG_TIMEOUT = 3000L    // bấm Xóa: hộp thoại xác nhận hiện xong (đôi khi hiện chậm)
+private const val DELETE_TAPS = 2           // bấm Xóa mà không có hộp thoại nào thì bấm lại, tối đa bấy nhiêu lần
 private const val DELETED_TIMEOUT = 2500L   // bấm Xác nhận: ô chuyển thành đồng hồ
 private const val CONFIRM_TAPS = 3          // bấm Xác nhận mà hộp thoại vẫn còn thì bấm lại, tối đa bấy nhiêu lần
 // Hộp thoại xóa làm tối nền (độ sáng tab ~0.4), kể cả lúc đang hiện dở khi chưa nhận ra được nút nào.
@@ -363,7 +364,9 @@ class Bot(private val svc: BotService) {
         for (attempt in 1..2) {                 // game đôi khi bỏ qua một lần chạm
             tap(task.tapX, task.tapY)
             img?.release()
-            val (im, p) = poll(SELECT_TIMEOUT) { im ->
+            // Khung chi tiết phải đọc được cùng một số điểm ở 2 ảnh liên tiếp (đã chuyển xong sang ô này): bấm Xóa
+            // khi khung chi tiết còn đang đổi thì game có lúc bỏ qua.
+            val (im, p) = pollStable(SELECT_TIMEOUT, { a, b -> a.value == b.value }) { im ->
                 if (!isSelected(im, task, u)) null
                 else readPanelPoints(im, u).takeIf { it.value == task.reading.value }
             }
@@ -390,17 +393,38 @@ class Bot(private val svc: BotService) {
             AppLog.i("  [chạy thử] Sẽ xóa nhiệm vụ ${panel.value} điểm.")
             return false to cur
         }
-        tap(btn.first, btn.second)
-        cur.release()
         // Chờ hộp thoại hiện xong (nút Xác nhận đứng yên ở 2 ảnh liên tiếp), hoặc ô mất hẳn khi không có hộp thoại
         // (đã tick "Hôm nay không nhắc nữa").
-        val (afterDelete, step) = pollStable(DIALOG_TIMEOUT, { a, b ->
+        suspend fun waitDialog() = pollStable(DIALOG_TIMEOUT, { a, b ->
             a.first == b.first && (a.second == null || samePos(a.second!!, b.second!!))
         }) { im ->
             findDialogButton(im, u.btnConfirm, u)?.let { "confirm" to it }
                 ?: if (cardGone(im)) ("gone" to null) else null
         }
-        var latest = afterDelete
+
+        var latest = cur
+        var step: Pair<String, Pair<Int, Int>?>? = null
+        var deleteBtn: Pair<Int, Int> = btn
+        for (deleteTap in 1..DELETE_TAPS) {
+            tap(deleteBtn.first, deleteBtn.second)
+            latest.release()
+            val (im, st) = waitDialog()
+            latest = im
+            step = st
+            if (st != null) break
+            if (cpu { tabBrightness(latest, u) } < NO_DIALOG_BRIGHTNESS) {
+                // Nền đã tối: hộp thoại đang hiện (chậm). Chờ thêm, không bấm Xóa lại.
+                val (im2, st2) = waitDialog()
+                latest.release()
+                latest = im2
+                step = st2
+                break
+            }
+            // Không có hộp thoại nào: game đã bỏ qua lần bấm Xóa. Bấm lại nếu nút Xóa vẫn còn.
+            if (deleteTap == DELETE_TAPS) break
+            deleteBtn = cpu { findDeleteButton(latest, u) } ?: break
+            AppLog.i("  Bấm Xóa lần $deleteTap không thấy hộp thoại - bấm lại.")
+        }
         var gone = step?.first == "gone"
         var confirm = step?.second
         var taps = 0
