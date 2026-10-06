@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/scroll"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clipToPadding="false">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:id="@+id/status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="17sp"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/openA11y"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Mở cài đặt Trợ năng" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Trong Trợ năng, tìm mục Hoa Viên Auto (thường nằm ở Ứng dụng đã cài đặt) và bật lên.\nAndroid 13 trở lên: nếu mục này bị mờ hoặc báo &quot;Cài đặt bị hạn chế&quot;, bấm nút dưới để mở Thông tin ứng dụng → ⋮ (góc trên phải) → Cho phép cài đặt bị hạn chế, rồi bật lại."
+            android:textSize="13sp" />
+
+        <Button
+            android:id="@+id/openAppInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Mở thông tin ứng dụng" />
+
+        <TextView
+            style="@style/Header"
+            android:text="Cách thử" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:lineSpacingExtra="2dp"
+            android:text="1. Bật Trợ năng ở trên. Bảng nổi hiện ở mép trên màn hình.\n2. Mở game, vào Đấu hội → bảng Nhiệm Vụ.\n3. Bấm lần lượt các nút trên bảng nổi, đợi mỗi bài chạy xong:\n   • Chụp – đo tốc độ chụp màn hình, nhận diện bảng.\n   • Chạm – chọn một ô nhiệm vụ (chỉ chọn, không xóa, không nhận).\n   • Kéo – cuộn danh sách một bước, đo độ cuộn. Bấm vài lần.\n   • Đầu – vuốt về đầu danh sách.\n   • Khóa – để yên máy chờ Game Booster khóa màn hình rồi thử mở khóa (tối đa 15 phút).\n   • ■ – dừng bài đang chạy. ≡ – kéo để dời bảng nổi, chạm để thu gọn.\n4. Quay lại đây, bấm Sao chép nhật ký và gửi lại."
+            android:textSize="13sp" />
+
+        <TextView
+            style="@style/Header"
+            android:text="Thông số kéo" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Quãng kéo tính theo px của máy gốc rộng 1080, máy khác tự quy đổi. Nên kéo sao cho danh sách cuộn khoảng 520px."
+            android:textSize="13sp" />
+
+        <LinearLayout style="@style/Row">
+
+            <TextView
+                style="@style/Label"
+                android:text="Quãng kéo (px)" />
+
+            <EditText
+                android:id="@+id/dragDistance"
+                style="@style/Number" />
+        </LinearLayout>
+
+        <LinearLayout style="@style/Row">
+
+            <TextView
+                style="@style/Label"
+                android:text="Thời gian kéo (ms)" />
+
+            <EditText
+                android:id="@+id/dragMs"
+                style="@style/Number" />
+        </LinearLayout>
+
+        <LinearLayout style="@style/Row">
+
+            <TextView
+                style="@style/Label"
+                android:text="Giữ trước khi nhả (ms)" />
+
+            <EditText
+                android:id="@+id/holdMs"
+                style="@style/Number" />
+        </LinearLayout>
+
+        <CheckBox
+            android:id="@+id/saveImages"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Lưu ảnh chụp để phân tích" />
+
+        <TextView
+            android:id="@+id/filesDir"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textIsSelectable="true"
+            android:textSize="12sp" />
+
+        <TextView
+            style="@style/Header"
+            android:text="Nhật ký" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/copyLog"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Sao chép nhật ký" />
+
+            <Button
+                android:id="@+id/clearLog"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Xóa nhật ký" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/log"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:textIsSelectable="true"
+            android:textSize="11sp" />
+    </LinearLayout>
+</ScrollView>

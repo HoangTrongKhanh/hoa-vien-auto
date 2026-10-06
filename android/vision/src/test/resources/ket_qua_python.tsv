@@ -1,0 +1,200 @@
+lock	samples/dialog.png	none
+ui	samples/dialog.png	1.000000	0.0	0.0
+cards	samples/dialog.png	157,1453,0
+attop	samples/dialog.png	0
+bright	samples/dialog.png	0.4115
+lock	samples/lock/after_tap.png	799,1343
+ui	samples/lock/after_tap.png	1.481481	2.0	-448.0
+cards	samples/lock/after_tap.png	1077,1847,0
+attop	samples/lock/after_tap.png	0
+bright	samples/lock/after_tap.png	0.3034
+lock	samples/lock/after_unlock.png	none
+ui	samples/lock/after_unlock.png	1.481481	2.0	-448.0
+cards	samples/lock/after_unlock.png	1077,1847,0
+attop	samples/lock/after_unlock.png	0
+bright	samples/lock/after_unlock.png	0.9895
+lock	samples/lock/before.png	none
+ui	samples/lock/before.png	1.481481	2.0	-448.0
+cards	samples/lock/before.png	1077,1847,0
+attop	samples/lock/before.png	0
+bright	samples/lock/before.png	0.2194
+lock	samples/pages/p00.png	450,1305
+ui	samples/pages/p00.png	1.000000	0.0	0.0
+cards	samples/pages/p00.png	444,995,0;156,1528,0;443,1528,0
+attop	samples/pages/p00.png	1
+bright	samples/pages/p00.png	1.0000
+lock	samples/pages/p01.png	402,1184
+ui	samples/pages/p01.png	1.000000	0.0	0.0
+cards	samples/pages/p01.png	156,1191,0;443,1191,0;157,1458,0
+attop	samples/pages/p01.png	0
+bright	samples/pages/p01.png	1.0000
+lock	samples/pages/p02.png	431,932
+ui	samples/pages/p02.png	1.000000	0.0	0.0
+cards	samples/pages/p02.png	156,854,0;443,854,0;157,1121,0
+attop	samples/pages/p02.png	0
+bright	samples/pages/p02.png	1.0000
+lock	samples/pages/p03.png	288,1123
+ui	samples/pages/p03.png	1.000000	0.0	0.0
+cards	samples/pages/p03.png	157,1317,0
+attop	samples/pages/p03.png	0
+bright	samples/pages/p03.png	1.0000
+lock	samples/pages/p04.png	453,1401
+ui	samples/pages/p04.png	1.000000	0.0	0.0
+cards	samples/pages/p04.png	157,980,0;444,1513,0
+attop	samples/pages/p04.png	0
+bright	samples/pages/p04.png	1.0000
+lock	samples/pages/p05.png	508,1203
+ui	samples/pages/p05.png	1.000000	0.0	0.0
+cards	samples/pages/p05.png	444,1176,0
+attop	samples/pages/p05.png	0
+bright	samples/pages/p05.png	1.0000
+lock	samples/pages/p06.png	602,1071
+ui	samples/pages/p06.png	1.000000	0.0	0.0
+cards	samples/pages/p06.png	444,839,0;731,1372,1
+attop	samples/pages/p06.png	0
+bright	samples/pages/p06.png	1.0000
+lock	samples/pages/p07.png	745,1088
+ui	samples/pages/p07.png	1.000000	0.0	0.0
+cards	samples/pages/p07.png	731,1071,1
+attop	samples/pages/p07.png	0
+bright	samples/pages/p07.png	1.0000
+lock	samples/pages/p08.png	601,1558
+ui	samples/pages/p08.png	1.000000	0.0	0.0
+cards	samples/pages/p08.png	444,1534,0;730,1534,0
+attop	samples/pages/p08.png	0
+bright	samples/pages/p08.png	1.0000
+lock	samples/pages/p09.png	531,1342
+ui	samples/pages/p09.png	1.000000	0.0	0.0
+cards	samples/pages/p09.png	444,1197,0;730,1197,0;156,1464,0;444,1464,0
+attop	samples/pages/p09.png	0
+bright	samples/pages/p09.png	1.0000
+lock	samples/pages/p10.png	531,1005
+ui	samples/pages/p10.png	1.000000	0.0	0.0
+cards	samples/pages/p10.png	444,860,0;730,860,0;156,1127,0;444,1127,0
+attop	samples/pages/p10.png	0
+bright	samples/pages/p10.png	1.0000
+lock	samples/pages/p11.png	447,1091
+ui	samples/pages/p11.png	1.000000	0.0	0.0
+cards	samples/pages/p11.png	156,1323,0;444,1323,0
+attop	samples/pages/p11.png	0
+bright	samples/pages/p11.png	1.0000
+lock	samples/pages/p12.png	455,1024
+ui	samples/pages/p12.png	1.000000	0.0	0.0
+cards	samples/pages/p12.png	156,986,0;444,986,0
+attop	samples/pages/p12.png	0
+bright	samples/pages/p12.png	1.0000
+lock	samples/pages/p13.png	none
+ui	samples/pages/p13.png	1.000000	0.0	0.0
+cards	samples/pages/p13.png	
+attop	samples/pages/p13.png	0
+bright	samples/pages/p13.png	1.0000
+lock	samples/pages/p14.png	none
+ui	samples/pages/p14.png	1.000000	0.0	0.0
+cards	samples/pages/p14.png	
+attop	samples/pages/p14.png	0
+bright	samples/pages/p14.png	1.0000
+lock	samples/pages/p15.png	none
+ui	samples/pages/p15.png	1.000000	0.0	0.0
+cards	samples/pages/p15.png	
+attop	samples/pages/p15.png	0
+bright	samples/pages/p15.png	1.0000
+lock	samples/screen1.png	457,1324
+ui	samples/screen1.png	1.000000	0.0	0.0
+cards	samples/screen1.png	444,995,0;159,1261,1;156,1528,0;443,1528,0
+attop	samples/screen1.png	1
+bright	samples/screen1.png	1.0000
+lock	samples/screen2.png	287,1171
+ui	samples/screen2.png	1.000000	0.0	0.0
+cards	samples/screen2.png	157,875,0;157,1409,0
+attop	samples/screen2.png	0
+bright	samples/screen2.png	1.0000
+lock	samples/screen3.png	527,980
+ui	samples/screen3.png	1.000000	0.0	0.0
+cards	samples/screen3.png	444,910,0
+attop	samples/screen3.png	0
+bright	samples/screen3.png	1.0000
+lock	samples/screen4.png	596,1391
+ui	samples/screen4.png	1.000000	0.0	0.0
+cards	samples/screen4.png	444,1359,0;730,1359,0
+attop	samples/screen4.png	0
+bright	samples/screen4.png	1.0000
+lock	samples/screen5.png	447,1120
+ui	samples/screen5.png	1.000000	0.0	0.0
+cards	samples/screen5.png	156,831,0;444,831,0;156,1364,0;444,1364,0
+attop	samples/screen5.png	0
+bright	samples/screen5.png	1.0000
+lock	samples/screen6.png	none
+ui	samples/screen6.png	1.000000	0.0	0.0
+cards	samples/screen6.png	
+attop	samples/screen6.png	0
+bright	samples/screen6.png	1.0000
+lock	samples/screen7.png	286,1578
+ui	samples/screen7.png	1.000000	0.0	0.0
+cards	samples/screen7.png	156,1555,0
+attop	samples/screen7.png	0
+bright	samples/screen7.png	1.0000
+lock	samples/screen8.png	286,1578
+ui	samples/screen8.png	1.000000	0.0	0.0
+cards	samples/screen8.png	156,1555,0
+attop	samples/screen8.png	0
+bright	samples/screen8.png	1.0000
+lock	samples/screen9.png	450,1305
+ui	samples/screen9.png	1.000000	0.0	0.0
+cards	samples/screen9.png	444,995,0;156,1528,0;443,1528,0
+attop	samples/screen9.png	1
+bright	samples/screen9.png	1.0000
+lock	samples/tab/screen1.png	693,1059
+ui	samples/tab/screen1.png	1.481481	2.0	-448.0
+cards	samples/tab/screen1.png	236,1022,0;670,1022,0;1092,1022,0;235,1807,0;660,1807,0
+attop	samples/tab/screen1.png	1
+bright	samples/tab/screen1.png	0.9895
+lock	samples/tab/selected.png	693,1059
+ui	samples/tab/selected.png	1.481481	2.0	-448.0
+cards	samples/tab/selected.png	236,1022,1;670,1022,0;1092,1022,0;235,1807,0;660,1807,0
+attop	samples/tab/selected.png	1
+bright	samples/tab/selected.png	0.9895
+shift	samples/pages/p00.png	samples/pages/p01.png	250	336	0.9727
+shift	samples/pages/p00.png	samples/pages/p01.png	150	336	0.9706
+unchanged	samples/pages/p00.png	samples/pages/p01.png	0
+shift	samples/pages/p01.png	samples/pages/p02.png	250	336	0.9754
+shift	samples/pages/p01.png	samples/pages/p02.png	150	336	0.9675
+unchanged	samples/pages/p01.png	samples/pages/p02.png	0
+shift	samples/pages/p02.png	samples/pages/p03.png	250	336	0.9454
+shift	samples/pages/p02.png	samples/pages/p03.png	150	336	0.9869
+unchanged	samples/pages/p02.png	samples/pages/p03.png	0
+shift	samples/pages/p03.png	samples/pages/p04.png	250	336	0.9656
+shift	samples/pages/p03.png	samples/pages/p04.png	150	336	0.9627
+unchanged	samples/pages/p03.png	samples/pages/p04.png	0
+shift	samples/pages/p04.png	samples/pages/p05.png	250	336	0.9605
+shift	samples/pages/p04.png	samples/pages/p05.png	150	336	0.9327
+unchanged	samples/pages/p04.png	samples/pages/p05.png	0
+shift	samples/pages/p05.png	samples/pages/p06.png	250	336	0.9668
+shift	samples/pages/p05.png	samples/pages/p06.png	150	336	0.9679
+unchanged	samples/pages/p05.png	samples/pages/p06.png	0
+shift	samples/pages/p06.png	samples/pages/p07.png	250	300	0.9420
+shift	samples/pages/p06.png	samples/pages/p07.png	150	300	0.9826
+unchanged	samples/pages/p06.png	samples/pages/p07.png	0
+shift	samples/pages/p07.png	samples/pages/p08.png	250	336	0.9805
+shift	samples/pages/p07.png	samples/pages/p08.png	150	604	0.9980
+unchanged	samples/pages/p07.png	samples/pages/p08.png	0
+shift	samples/pages/p08.png	samples/pages/p09.png	250	336	0.9608
+shift	samples/pages/p08.png	samples/pages/p09.png	150	336	0.9447
+unchanged	samples/pages/p08.png	samples/pages/p09.png	0
+shift	samples/pages/p09.png	samples/pages/p10.png	250	336	0.9406
+shift	samples/pages/p09.png	samples/pages/p10.png	150	336	0.9275
+unchanged	samples/pages/p09.png	samples/pages/p10.png	0
+shift	samples/pages/p10.png	samples/pages/p11.png	250	336	0.9102
+shift	samples/pages/p10.png	samples/pages/p11.png	150	336	0.9788
+unchanged	samples/pages/p10.png	samples/pages/p11.png	0
+shift	samples/pages/p11.png	samples/pages/p12.png	250	336	0.9593
+shift	samples/pages/p11.png	samples/pages/p12.png	150	336	0.9655
+unchanged	samples/pages/p11.png	samples/pages/p12.png	0
+shift	samples/pages/p12.png	samples/pages/p13.png	250	336	0.9310
+shift	samples/pages/p12.png	samples/pages/p13.png	150	336	0.8874
+unchanged	samples/pages/p12.png	samples/pages/p13.png	0
+shift	samples/pages/p13.png	samples/pages/p14.png	250	64	0.9476
+shift	samples/pages/p13.png	samples/pages/p14.png	150	64	0.9799
+unchanged	samples/pages/p13.png	samples/pages/p14.png	0
+shift	samples/pages/p14.png	samples/pages/p15.png	250	336	0.9028
+shift	samples/pages/p14.png	samples/pages/p15.png	150	336	0.9849
+unchanged	samples/pages/p14.png	samples/pages/p15.png	0

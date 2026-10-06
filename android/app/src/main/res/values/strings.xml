@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Hoa Viên Auto</string>
+    <string name="a11y_description">Tự động dọn nhiệm vụ Đấu hội điểm thấp: chụp màn hình game để nhận diện các ô nhiệm vụ và thực hiện thao tác chạm, kéo thay bạn. Ứng dụng không đọc nội dung các ứng dụng khác và không gửi dữ liệu ra ngoài.</string>
+</resources>

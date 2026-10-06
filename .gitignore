@@ -1,0 +1,12 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Dữ liệu sinh ra khi chạy
+/debug/
+*.log
+.cong_adb
+
+# Bản build
+*.apk
