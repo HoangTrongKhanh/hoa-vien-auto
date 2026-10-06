@@ -92,6 +92,30 @@ class PythonParityTest {
         }
     }
 
+    @Test
+    fun badgeNumbers() {
+        var count = 0
+        for (r in rows("badges")) {
+            val img = image(r[1])
+            val ui = uiOf(r[1])
+            val want = r.getOrElse(2) { "" }.split(";").filter { it.isNotEmpty() }.map { it.split(",") }
+            val got = findBadges(img, ui)
+            assertEquals(want.map { num(it[2]) }, got.map { it.number }, "${r[1]}: số thứ tự ô")
+            for ((w, g) in want.zip(got)) {
+                assertTrue(abs(w[0].toInt() - g.x) <= 1 && abs(w[1].toInt() - g.y) <= 1, "${r[1]}: huy hiệu ${w.take(2)} != (${g.x},${g.y})")
+            }
+            count += got.size
+        }
+        for (r in rows("tasknum")) {
+            val img = image(r[1])
+            val ui = uiOf(r[1])
+            val badges = findBadges(img, ui)
+            val want = r.getOrElse(2) { "" }.split(";").filter { it.isNotEmpty() }.map(::num)
+            assertEquals(want, findTasks(img, ui).map { taskNumber(it, badges, ui) }, "${r[1]}: số thứ tự ô của nhiệm vụ")
+        }
+        println("Đã so $count huy hiệu")
+    }
+
     /** Nhãn do người xem ảnh ghi tay (samples/labels.txt: ảnh, x, y gần ô, điểm đúng). */
     @Test
     fun handLabels() {

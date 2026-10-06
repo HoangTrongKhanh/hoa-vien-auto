@@ -11,44 +11,75 @@
         android:orientation="vertical"
         android:padding="16dp">
 
+        <!-- Trạng thái -->
         <TextView
-            android:id="@+id/status"
+            android:id="@+id/botStatus"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="17sp"
+            android:background="@drawable/card"
+            android:padding="12dp"
+            android:textSize="16sp"
             android:textStyle="bold" />
+
+        <!-- Bắt đầu -->
+        <TextView
+            style="@style/Header"
+            android:text="Bắt đầu" />
+
+        <TextView
+            android:id="@+id/step1"
+            style="@style/Step"
+            android:text="1. Bật Trợ năng cho Hoa Viên Auto" />
+
+        <TextView
+            android:id="@+id/step1Hint"
+            style="@style/Hint"
+            android:text="Cài đặt → Hỗ trợ → Ứng dụng đã cài đặt → Hoa Viên Auto → bật, rồi bấm Cho phép." />
 
         <Button
             android:id="@+id/openA11y"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            style="@style/StepButton"
             android:text="Mở cài đặt Trợ năng" />
 
         <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="Trong Trợ năng, tìm mục Hoa Viên Auto (thường nằm ở Ứng dụng đã cài đặt) và bật lên.\nAndroid 13 trở lên: nếu mục này bị mờ hoặc báo &quot;Cài đặt bị hạn chế&quot;, bấm nút dưới để mở Thông tin ứng dụng → ⋮ (góc trên phải) → Cho phép cài đặt bị hạn chế, rồi bật lại."
-            android:textSize="13sp" />
+            android:id="@+id/restrictedHint"
+            style="@style/Hint"
+            android:text="Nếu máy báo &quot;Cài đặt bị hạn chế&quot; (hoặc công tắc bị mờ): bấm nút dưới → ⋮ ở góc trên phải → Cho phép cài đặt bị hạn chế, xác nhận bằng vân tay/mã PIN, rồi quay lại bật Trợ năng." />
 
         <Button
             android:id="@+id/openAppInfo"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            style="@style/StepButton"
             android:text="Mở thông tin ứng dụng" />
 
         <TextView
-            style="@style/Header"
-            android:text="Cách dùng" />
+            android:id="@+id/step2"
+            style="@style/Step"
+            android:text="2. Cho phép thông báo (để bot báo khi cần bạn)" />
+
+        <Button
+            android:id="@+id/allowNotify"
+            style="@style/StepButton"
+            android:text="Cho phép thông báo" />
 
         <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:lineSpacingExtra="2dp"
-            android:text="1. Bật Trợ năng ở trên. Bảng nổi hiện ở mép trên màn hình khi rời màn hình này.\n2. Mở game, vào Đấu hội → bảng Nhiệm Vụ.\n3. Bấm trên bảng nổi:\n   • ▶ Chạy – quét cả danh sách, xóa nhiệm vụ điểm thấp, lặp lại theo chu kỳ bên dưới.\n   • Thử 1 lượt – quét 1 lượt, chỉ báo những nhiệm vụ sẽ xóa, không xóa thật.\n   • ■ – dừng.  ≡ – kéo để dời bảng nổi, chạm để thu gọn.\n   • ⋯ – các bài thử từng thao tác (dùng khi cài lên máy mới).\nTrong lúc chạy cứ để game ở bảng Nhiệm Vụ; bảng nổi giữ màn hình luôn sáng và tự mở khóa Game Booster."
-            android:textSize="13sp" />
+            android:id="@+id/step3"
+            style="@style/Step"
+            android:text="3. Mở game, vào Đấu hội → bảng Nhiệm Vụ" />
 
+        <Button
+            android:id="@+id/openGame"
+            style="@style/StepButton"
+            android:text="Mở game" />
+
+        <TextView
+            style="@style/Step"
+            android:text="4. Bấm ▶ Chạy trên bảng nổi ở mép trên màn hình" />
+
+        <TextView
+            style="@style/Hint"
+            android:text="• ▶ Chạy: quét cả danh sách, xóa nhiệm vụ điểm thấp, lặp lại theo chu kỳ.\n• Thử 1 lượt: chỉ báo những nhiệm vụ sẽ xóa, không xóa thật.\n• ■: dừng.  ≡: kéo để dời bảng nổi, chạm để thu gọn." />
+
+        <!-- Cài đặt -->
         <TextView
             style="@style/Header"
             android:text="Cài đặt" />
@@ -86,62 +117,16 @@
                 style="@style/Number" />
         </LinearLayout>
 
-        <CheckBox
-            android:id="@+id/saveImages"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Lưu ảnh đánh dấu để tra lỗi" />
-
-        <TextView
-            android:id="@+id/filesDir"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textIsSelectable="true"
-            android:textSize="12sp" />
-
+        <!-- Lưu ý -->
         <TextView
             style="@style/Header"
-            android:text="Bài thử kéo (nút ⋯ → Kéo)" />
+            android:text="Lưu ý" />
 
         <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Chỉ dùng cho bài thử Kéo. Quãng kéo tính theo px của máy gốc rộng 1080, máy khác tự quy đổi. Bot dùng kéo 548px, 500 ms, giữ 150 ms (danh sách cuộn ~520px)."
-            android:textSize="13sp" />
+            style="@style/Hint"
+            android:text="• Cắm sạc khi để bot chạy lâu. Bảng nổi giữ màn hình luôn sáng.\n• Để game ở bảng Nhiệm Vụ. Bot không tự mở lại game; khi bị thoát, bot gửi thông báo và tự chạy tiếp khi bạn mở lại bảng Nhiệm Vụ.\n• Đừng che cạnh trên của máy: tính năng Chống chạm nhầm của Samsung sẽ làm tối màn hình và chặn thao tác.\n• Bot tự mở khóa màn hình của Game Booster.\n• Tự động hóa có thể vi phạm điều khoản của game; bạn tự chịu trách nhiệm khi dùng.\n• App không đọc nội dung ứng dụng khác và không gửi dữ liệu ra ngoài." />
 
-        <LinearLayout style="@style/Row">
-
-            <TextView
-                style="@style/Label"
-                android:text="Quãng kéo (px)" />
-
-            <EditText
-                android:id="@+id/dragDistance"
-                style="@style/Number" />
-        </LinearLayout>
-
-        <LinearLayout style="@style/Row">
-
-            <TextView
-                style="@style/Label"
-                android:text="Thời gian kéo (ms)" />
-
-            <EditText
-                android:id="@+id/dragMs"
-                style="@style/Number" />
-        </LinearLayout>
-
-        <LinearLayout style="@style/Row">
-
-            <TextView
-                style="@style/Label"
-                android:text="Giữ trước khi nhả (ms)" />
-
-            <EditText
-                android:id="@+id/holdMs"
-                style="@style/Number" />
-        </LinearLayout>
-
+        <!-- Nhật ký -->
         <TextView
             style="@style/Header"
             android:text="Nhật ký" />
@@ -173,5 +158,83 @@
             android:fontFamily="monospace"
             android:textIsSelectable="true"
             android:textSize="11sp" />
+
+        <!-- Nâng cao -->
+        <Button
+            android:id="@+id/toggleAdvanced"
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Nâng cao ▾" />
+
+        <LinearLayout
+            android:id="@+id/advanced"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <CheckBox
+                android:id="@+id/showProbes"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Hiện các bài thử trên bảng nổi (nút ⋯)" />
+
+            <CheckBox
+                android:id="@+id/saveImages"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Lưu ảnh đánh dấu để tra lỗi" />
+
+            <TextView
+                android:id="@+id/filesDir"
+                style="@style/Hint"
+                android:textIsSelectable="true" />
+
+            <TextView
+                style="@style/Hint"
+                android:layout_marginTop="12dp"
+                android:text="Bài thử Kéo: quãng kéo tính theo px của máy gốc rộng 1080, máy khác tự quy đổi. Bot dùng kéo 548px, 500 ms, giữ 150 ms (danh sách cuộn ~520px)." />
+
+            <LinearLayout style="@style/Row">
+
+                <TextView
+                    style="@style/Label"
+                    android:text="Quãng kéo (px)" />
+
+                <EditText
+                    android:id="@+id/dragDistance"
+                    style="@style/Number" />
+            </LinearLayout>
+
+            <LinearLayout style="@style/Row">
+
+                <TextView
+                    style="@style/Label"
+                    android:text="Thời gian kéo (ms)" />
+
+                <EditText
+                    android:id="@+id/dragMs"
+                    style="@style/Number" />
+            </LinearLayout>
+
+            <LinearLayout style="@style/Row">
+
+                <TextView
+                    style="@style/Label"
+                    android:text="Giữ trước khi nhả (ms)" />
+
+                <EditText
+                    android:id="@+id/holdMs"
+                    style="@style/Number" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/version"
+            style="@style/Hint"
+            android:layout_marginTop="16dp"
+            android:gravity="center" />
     </LinearLayout>
 </ScrollView>

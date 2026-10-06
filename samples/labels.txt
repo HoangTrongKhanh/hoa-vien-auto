@@ -7,3 +7,4 @@ samples/tab/screen1.png 1092 1022 9
 samples/tab/screen1.png 660 1807 10
 samples/tab/screen1.png 236 1022 14
 samples/tab/screen1.png 235 1807 28
+samples/fused/tab_21_anh_danh_dau.png 662 1494 21

@@ -48,6 +48,9 @@ def main():
         rows.append(["delete", rel, pos(x.has_delete_button(img, ui))])
         rows.append(["dialog", rel, pos(x.find_dialog_button(img, ui.btn_confirm, ui)),
                      pos(x.find_dialog_button(img, ui.btn_cancel, ui))])
+        badges = x.find_badges(img, ui)
+        rows.append(["badges", rel, ";".join(f"{bx},{by},{num(n)}" for bx, by, n in badges)])
+        rows.append(["tasknum", rel, ";".join(num(x.task_number(t, badges, ui)) for t in tasks)])
         rows.append(["attop", rel, str(int(x.at_top(img, ui)))])
         th, tw = ui.tab.shape[:2]
         tx, ty = ui.x(x.REF_TAB_POS[0]), ui.y(x.REF_TAB_POS[1])

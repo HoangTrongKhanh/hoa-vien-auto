@@ -47,4 +47,37 @@ class Prefs(context: Context) {
     var saveImages: Boolean
         get() = p.getBoolean("save_images", false)
         set(v) = p.edit().putBoolean("save_images", v).apply()
+
+    /** Hiện nút ⋯ (các bài thử) trên bảng nổi. */
+    var showProbes: Boolean
+        get() = p.getBoolean("show_probes", false)
+        set(v) = p.edit().putBoolean("show_probes", v).apply()
+
+    /** Bot đang chạy liên tục (▶): dịch vụ khởi động lại thì chạy tiếp. Tắt khi người dùng bấm ■. */
+    var running: Boolean
+        get() = p.getBoolean("running", false)
+        set(v) = p.edit().putBoolean("running", v).apply()
+
+    /** Vị trí bảng nổi người dùng đã kéo tới, -1 = mặc định. */
+    var overlayX: Int
+        get() = p.getInt("overlay_x", -1)
+        set(v) = p.edit().putInt("overlay_x", v).apply()
+
+    var overlayY: Int
+        get() = p.getInt("overlay_y", -1)
+        set(v) = p.edit().putInt("overlay_y", v).apply()
+
+    // Thống kê số nhiệm vụ đã xóa trong ngày (xem deletedToday()).
+    var statDate: String
+        get() = p.getString("stat_date", "") ?: ""
+        set(v) = p.edit().putString("stat_date", v).apply()
+
+    var statDeleted: Int
+        get() = p.getInt("stat_deleted", 0)
+        set(v) = p.edit().putInt("stat_deleted", v).apply()
+
+    /** Số thứ tự ô lớn nhất từng thấy (tổng số ô của danh sách), 0 = chưa biết. */
+    var knownLastCard: Int
+        get() = p.getInt("known_last_card", 0)
+        set(v) = p.edit().putInt("known_last_card", v).apply()
 }

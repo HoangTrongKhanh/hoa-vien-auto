@@ -30,7 +30,7 @@ fun decide(r: Reading, maxPoints: Int): Verdict = when {
 }
 
 /** Phân vị kiểu numpy.percentile (nội suy tuyến tính) của mảng đã sắp xếp. */
-private fun percentile(sorted: FloatArray, q: Double): Double {
+internal fun percentile(sorted: FloatArray, q: Double): Double {
     val pos = q / 100 * (sorted.size - 1)
     val lo = floor(pos).toInt()
     val hi = min(lo + 1, sorted.size - 1)
@@ -58,11 +58,35 @@ private fun inkMap(roi: Mat): Mat {
     return out
 }
 
+const val FUSED_RATIO = 1.1      // chữ số đơn rộng tối đa ~0.95 lần chiều cao; rộng hơn bấy nhiêu là 2 chữ số dính nhau
+
+/** Tách khung 2 chữ số dính nhau (ví dụ "21") tại cột ít nét nhất ở khoảng giữa; khung bình thường giữ nguyên.
+ *  mask: 0/1 theo hàng, rộng mw. */
+private fun splitFused(mask: ByteArray, mw: Int, box: IntArray): List<IntArray> {
+    val (x, y, w, h) = box
+    if (w <= h * FUSED_RATIO) return listOf(box)
+    fun on(cx: Int, cy: Int) = mask[(y + cy) * mw + x + cx].toInt() != 0
+    val cols = IntArray(w) { cx -> (0 until h).count { cy -> on(cx, cy) } }
+    val lo = (w * 0.3).toInt()
+    val hi = (w * 0.7).toInt()
+    var cut = lo
+    for (cx in lo..hi) if (cols[cx] < cols[cut]) cut = cx
+    val out = mutableListOf<IntArray>()
+    for ((a, b) in listOf(0 to cut, cut to w)) {
+        val rows = (0 until h).filter { cy -> (a until b).any { cx -> on(cx, cy) } }
+        val cs = (a until b).filter { cx -> (0 until h).any { cy -> on(cx, cy) } }
+        if (rows.isNotEmpty()) out += intArrayOf(x + cs.first(), y + rows.first(), cs.last() - cs.first() + 1, rows.last() - rows.first() + 1)
+    }
+    return out
+}
+
 /** Khung (x, y, w, h) của từng chữ số, trái sang phải. */
 private fun digitBoxes(ink: Mat, minHeight: Int): List<IntArray> {
     val mask = Mat()
     Imgproc.threshold(ink, mask, 0.5, 1.0, Imgproc.THRESH_BINARY)
     mask.convertTo(mask, CvType.CV_8U)
+    val maskPx = ByteArray(mask.rows() * mask.cols())
+    mask.get(0, 0, maskPx)
     val labels = Mat()
     val stats = Mat()
     val centroids = Mat()
@@ -72,14 +96,15 @@ private fun digitBoxes(ink: Mat, minHeight: Int): List<IntArray> {
     for (i in 1 until n) {
         stats.get(i, 0, row)
         val (x, y, w, h, area) = row
-        if (h >= minHeight && area >= 40 && x > 0) boxes += intArrayOf(x, y, w, h)  // x > 0: bỏ mép icon bị cắt ở biên trái
+        // x > 0: bỏ mép icon bị cắt ở biên trái
+        if (h >= minHeight && area >= 40 && x > 0) boxes += splitFused(maskPx, mask.cols(), intArrayOf(x, y, w, h))
     }
     for (m in listOf(mask, labels, stats, centroids)) m.release()
     return boxes.sortedWith(compareBy<IntArray>({ it[0] }, { it[1] }, { it[2] }, { it[3] }))
 }
 
 /** Co về chiều cao DIGIT_SIZE giữ tỉ lệ, đặt giữa khung vuông. Trả về DIGIT_SIZE*DIGIT_SIZE giá trị 0..1. */
-private fun normalizeDigit(ink: Mat, box: IntArray): FloatArray {
+internal fun normalizeDigit(ink: Mat, box: IntArray): FloatArray {
     val (x, y, w, h) = box
     val nw = max(1, min(DIGIT_SIZE, pyRound(w * DIGIT_SIZE.toDouble() / h)))
     val r = Mat()

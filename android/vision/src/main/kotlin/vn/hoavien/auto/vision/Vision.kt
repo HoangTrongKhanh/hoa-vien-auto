@@ -43,6 +43,8 @@ data class Box(val x0: Int, val y0: Int, val x1: Int, val y1: Int) {
 
     fun contains(x: Int, y: Int) = x in x0 until x1 && y in y0 until y1
 
+    fun intersects(o: Box) = x0 < o.x1 && o.x0 < x1 && y0 < o.y1 && o.y0 < y1
+
     /** Phần nằm trong ảnh rộng w, cao h (như cắt mảng numpy). */
     fun clip(w: Int, h: Int) = Box(x0.coerceIn(0, w), y0.coerceIn(0, h), max(x0, x1).coerceIn(0, w), max(y0, y1).coerceIn(0, h))
 }
@@ -77,10 +79,14 @@ fun decodeImage(bytes: ByteArray): Mat {
 /** Mẫu chữ số: chữ số và mask nhị phân DIGIT_SIZE x DIGIT_SIZE (true = nét chữ). */
 class DigitTemplate(val digit: Int, val mask: BooleanArray)
 
+/** Mẫu chữ số trong huy hiệu số thứ tự ô: chữ số, số lỗ của nét (0/4/6/9 có 1, 8 có 2), mask chuẩn hoá. */
+class BadgeDigit(val digit: Int, val holes: Int, val mask: BooleanArray)
+
 class Templates(
     val tab: Mat, val compass: Mat, val badge1: Mat,
     val btnDelete: Mat, val btnConfirm: Mat, val btnCancel: Mat,
     val digits: List<DigitTemplate>,
+    val badgeBlank: Mat, val badgeDigits: List<BadgeDigit>,
 ) {
     companion object {
         /** read(đường dẫn) trả về nội dung một file trong thư mục templates/, list(thư mục con) liệt kê tên file. */
@@ -96,6 +102,17 @@ class Templates(
                 DigitTemplate(name[0].digitToInt(), BooleanArray(px.size) { (px[it].toInt() and 0xFF) > 127 })
             }
             require(digits.isNotEmpty()) { "thiếu mẫu chữ số trong templates/digits" }
+            // Tên file <chữ số>_<số lỗ>_<thứ tự>.png (tạo bằng tao_mau_huy_hieu.py).
+            val badgeDigits = list("badge_digits").filter { it.endsWith(".png") }.sorted().map { name ->
+                val (d, h) = name.removeSuffix(".png").split("_")
+                val buf = MatOfByte(*read("badge_digits/$name"))
+                val m = Imgcodecs.imdecode(buf, Imgcodecs.IMREAD_GRAYSCALE)
+                buf.release()
+                val px = ByteArray(DIGIT_SIZE * DIGIT_SIZE)
+                m.get(0, 0, px)
+                m.release()
+                BadgeDigit(d.toInt(), h.toInt(), BooleanArray(px.size) { (px[it].toInt() and 0xFF) > 127 })
+            }
             return Templates(
                 tab = decodeImage(read("tab_nhiem_vu.png")),
                 compass = decodeImage(read("compass.png")),
@@ -104,6 +121,8 @@ class Templates(
                 btnConfirm = decodeImage(read("btn_xac_nhan.png")),
                 btnCancel = decodeImage(read("btn_huy.png")),
                 digits = digits,
+                badgeBlank = decodeImage(read("badge_blank.png")),
+                badgeDigits = badgeDigits,
             )
         }
     }
@@ -118,6 +137,8 @@ class Ui(base: Templates, val s: Double, val dx: Double = 0.0, val dy: Double = 
     val btnConfirm = scaled(base.btnConfirm)
     val btnCancel = scaled(base.btnCancel)
     val digits = base.digits                    // chữ số đã chuẩn hoá kích thước, không cần co giãn
+    val badgeBlank = scaled(base.badgeBlank)
+    val badgeDigits = base.badgeDigits
     val grid = box(GRID)
     val panelPoints = box(PANEL_POINTS)
     val deleteRegion = box(DELETE_BTN_REGION)

@@ -4,14 +4,28 @@ tasks	samples/dialog.png	157,1453,0,14,14,14
 panel	samples/dialog.png	28	28	28
 delete	samples/dialog.png	370,1935
 dialog	samples/dialog.png	762,1357	327,1357
+badges	samples/dialog.png	151,1553,13;438,1553,14;725,1553,15
+tasknum	samples/dialog.png	-
 attop	samples/dialog.png	0
 bright	samples/dialog.png	0.4115
+lock	samples/fused/tab_21_anh_danh_dau.png	none
+ui	samples/fused/tab_21_anh_danh_dau.png	1.481481	2.0	-448.0
+tasks	samples/fused/tab_21_anh_danh_dau.png	662,1494,0,21,21,21
+panel	samples/fused/tab_21_anh_danh_dau.png	5	5	5
+delete	samples/fused/tab_21_anh_danh_dau.png	550,2407
+dialog	samples/fused/tab_21_anh_danh_dau.png	none	none
+badges	samples/fused/tab_21_anh_danh_dau.png	228,856,31;650,856,32;1072,856,33;227,1248,34;650,1248,35;1072,1248,36;227,1641,37;650,1641,38;1072,1641,39
+tasknum	samples/fused/tab_21_anh_danh_dau.png	35
+attop	samples/fused/tab_21_anh_danh_dau.png	0
+bright	samples/fused/tab_21_anh_danh_dau.png	0.9895
 lock	samples/lock/after_tap.png	799,1343
 ui	samples/lock/after_tap.png	1.481481	2.0	-448.0
 tasks	samples/lock/after_tap.png	1077,1847,0,-,-,-
 panel	samples/lock/after_tap.png	-	-	-
 delete	samples/lock/after_tap.png	none
 dialog	samples/lock/after_tap.png	none	none
+badges	samples/lock/after_tap.png	227,816,-;649,816,-;1072,816,-;227,1209,-;1072,1209,-;227,1601,-;650,1601,-;1072,1601,-
+tasknum	samples/lock/after_tap.png	-
 attop	samples/lock/after_tap.png	0
 bright	samples/lock/after_tap.png	0.3034
 lock	samples/lock/after_unlock.png	none
@@ -20,6 +34,8 @@ tasks	samples/lock/after_unlock.png	1077,1847,0,60,60,60
 panel	samples/lock/after_unlock.png	-	-	-
 delete	samples/lock/after_unlock.png	none
 dialog	samples/lock/after_unlock.png	none	none
+badges	samples/lock/after_unlock.png	227,816,58;649,816,59;1072,816,60;227,1209,61;649,1209,62;1072,1209,63;227,1601,64;650,1601,65;1072,1601,66
+tasknum	samples/lock/after_unlock.png	66
 attop	samples/lock/after_unlock.png	0
 bright	samples/lock/after_unlock.png	0.9895
 lock	samples/lock/before.png	none
@@ -28,6 +44,8 @@ tasks	samples/lock/before.png	1077,1847,0,-,-,-
 panel	samples/lock/before.png	-	-	-
 delete	samples/lock/before.png	none
 dialog	samples/lock/before.png	none	none
+badges	samples/lock/before.png	227,816,-;649,816,-;1072,816,-;227,1209,-;649,1209,-;1072,1209,-;227,1601,-;650,1601,-;1072,1601,-
+tasknum	samples/lock/before.png	-
 attop	samples/lock/before.png	0
 bright	samples/lock/before.png	0.2194
 lock	samples/pages/p00.png	450,1305
@@ -36,6 +54,8 @@ tasks	samples/pages/p00.png	444,995,0,14,14,14;156,1528,0,28,28,28;443,1528,0,28
 panel	samples/pages/p00.png	23	23	23
 delete	samples/pages/p00.png	370,1935
 dialog	samples/pages/p00.png	none	none
+badges	samples/pages/p00.png	151,828,1;438,828,2;725,828,3;151,1095,4;438,1095,5;725,1095,6;151,1361,7;438,1361,8;725,1361,9
+tasknum	samples/pages/p00.png	2;7;8
 attop	samples/pages/p00.png	1
 bright	samples/pages/p00.png	1.0000
 lock	samples/pages/p01.png	402,1184
@@ -44,6 +64,8 @@ tasks	samples/pages/p01.png	156,1191,0,28,28,28;443,1191,0,28,28,28;157,1458,0,1
 panel	samples/pages/p01.png	23	23	23
 delete	samples/pages/p01.png	370,1935
 dialog	samples/pages/p01.png	none	none
+badges	samples/pages/p01.png	151,1024,7;438,1024,8;725,1024,9;151,1291,10;439,1292,11;725,1292,12;151,1558,13;438,1558,14;725,1557,15
+tasknum	samples/pages/p01.png	7;8;10
 attop	samples/pages/p01.png	0
 bright	samples/pages/p01.png	1.0000
 lock	samples/pages/p02.png	431,932
@@ -52,6 +74,8 @@ tasks	samples/pages/p02.png	156,854,0,28,28,28;443,854,0,28,28,28;157,1121,0,14,
 panel	samples/pages/p02.png	23	23	23
 delete	samples/pages/p02.png	370,1935
 dialog	samples/pages/p02.png	none	none
+badges	samples/pages/p02.png	151,954,10;439,955,11;725,955,12;151,1221,13;438,1221,14;725,1220,15;151,1487,16;438,1487,17;725,1487,18
+tasknum	samples/pages/p02.png	-;-;10
 attop	samples/pages/p02.png	0
 bright	samples/pages/p02.png	1.0000
 lock	samples/pages/p03.png	288,1123
@@ -60,6 +84,8 @@ tasks	samples/pages/p03.png	157,1317,0,14,14,14
 panel	samples/pages/p03.png	23	23	23
 delete	samples/pages/p03.png	370,1935
 dialog	samples/pages/p03.png	none	none
+badges	samples/pages/p03.png	151,884,13;438,884,14;725,883,15;151,1150,16;438,1150,17;725,1150,18;151,1417,19;438,1417,20;725,1417,21
+tasknum	samples/pages/p03.png	16
 attop	samples/pages/p03.png	0
 bright	samples/pages/p03.png	1.0000
 lock	samples/pages/p04.png	453,1401
@@ -68,6 +94,8 @@ tasks	samples/pages/p04.png	157,980,0,14,14,14;444,1513,0,23,23,23
 panel	samples/pages/p04.png	23	23	23
 delete	samples/pages/p04.png	370,1935
 dialog	samples/pages/p04.png	none	none
+badges	samples/pages/p04.png	151,813,16;438,813,17;725,813,18;151,1080,19;438,1080,20;725,1080,21;151,1347,22;438,1346,23;725,1346,24
+tasknum	samples/pages/p04.png	16;23
 attop	samples/pages/p04.png	0
 bright	samples/pages/p04.png	1.0000
 lock	samples/pages/p05.png	508,1203
@@ -76,6 +104,8 @@ tasks	samples/pages/p05.png	444,1176,0,23,23,23
 panel	samples/pages/p05.png	23	23	23
 delete	samples/pages/p05.png	370,1935
 dialog	samples/pages/p05.png	none	none
+badges	samples/pages/p05.png	151,1010,22;438,1009,23;725,1009,24;151,1276,25;438,1276,26;725,1276,27;151,1543,28;438,1543,29;725,1543,30
+tasknum	samples/pages/p05.png	23
 attop	samples/pages/p05.png	0
 bright	samples/pages/p05.png	1.0000
 lock	samples/pages/p06.png	602,1071
@@ -84,6 +114,8 @@ tasks	samples/pages/p06.png	444,839,0,23,23,23;731,1372,1,23,23,23
 panel	samples/pages/p06.png	23	23	23
 delete	samples/pages/p06.png	370,1935
 dialog	samples/pages/p06.png	none	none
+badges	samples/pages/p06.png	151,939,25;438,939,26;725,939,27;151,1206,28;438,1206,29;725,1206,30;151,1473,31;438,1473,32;725,1472,33
+tasknum	samples/pages/p06.png	-;30
 attop	samples/pages/p06.png	0
 bright	samples/pages/p06.png	1.0000
 lock	samples/pages/p07.png	745,1088
@@ -92,6 +124,8 @@ tasks	samples/pages/p07.png	731,1071,1,23,23,23
 panel	samples/pages/p07.png	23	23	23
 delete	samples/pages/p07.png	370,1935
 dialog	samples/pages/p07.png	none	none
+badges	samples/pages/p07.png	151,905,28;438,904,29;725,905,30;151,1172,31;438,1172,32;725,1171,33;151,1438,34;438,1438,35;725,1438,36
+tasknum	samples/pages/p07.png	30
 attop	samples/pages/p07.png	0
 bright	samples/pages/p07.png	1.0000
 lock	samples/pages/p08.png	601,1558
@@ -100,6 +134,8 @@ tasks	samples/pages/p08.png	444,1534,0,23,23,23;730,1534,0,28,28,28
 panel	samples/pages/p08.png	23	23	23
 delete	samples/pages/p08.png	370,1935
 dialog	samples/pages/p08.png	none	none
+badges	samples/pages/p08.png	151,835,31;438,835,32;725,834,33;151,1101,34;438,1101,35;725,1101,36;151,1367,37;439,1367,38;725,1367,39
+tasknum	samples/pages/p08.png	38;39
 attop	samples/pages/p08.png	0
 bright	samples/pages/p08.png	1.0000
 lock	samples/pages/p09.png	531,1342
@@ -108,6 +144,8 @@ tasks	samples/pages/p09.png	444,1197,0,23,23,23;730,1197,0,28,28,28;156,1464,0,2
 panel	samples/pages/p09.png	23	23	23
 delete	samples/pages/p09.png	370,1935
 dialog	samples/pages/p09.png	none	none
+badges	samples/pages/p09.png	151,1030,37;439,1030,38;725,1030,39;151,1297,40;438,1297,41;725,1298,42;151,1564,43;438,1564,44;725,1563,45
+tasknum	samples/pages/p09.png	38;39;40;41
 attop	samples/pages/p09.png	0
 bright	samples/pages/p09.png	1.0000
 lock	samples/pages/p10.png	531,1005
@@ -116,6 +154,8 @@ tasks	samples/pages/p10.png	444,860,0,23,23,23;730,860,0,28,28,28;156,1127,0,28,
 panel	samples/pages/p10.png	23	23	23
 delete	samples/pages/p10.png	370,1935
 dialog	samples/pages/p10.png	none	none
+badges	samples/pages/p10.png	151,960,40;438,960,41;725,961,42;151,1227,43;438,1227,44;725,1226,45;151,1493,46;438,1493,47;726,1493,48
+tasknum	samples/pages/p10.png	-;-;40;41
 attop	samples/pages/p10.png	0
 bright	samples/pages/p10.png	1.0000
 lock	samples/pages/p11.png	447,1091
@@ -124,6 +164,8 @@ tasks	samples/pages/p11.png	156,1323,0,28,28,28;444,1323,0,25,25,25
 panel	samples/pages/p11.png	23	23	23
 delete	samples/pages/p11.png	370,1935
 dialog	samples/pages/p11.png	none	none
+badges	samples/pages/p11.png	151,890,43;438,890,44;725,889,45;151,1156,46;438,1156,47;726,1156,48;151,1423,49;438,1423,50;725,1423,51
+tasknum	samples/pages/p11.png	46;47
 attop	samples/pages/p11.png	0
 bright	samples/pages/p11.png	1.0000
 lock	samples/pages/p12.png	455,1024
@@ -132,6 +174,8 @@ tasks	samples/pages/p12.png	156,986,0,28,28,28;444,986,0,25,25,25
 panel	samples/pages/p12.png	23	23	23
 delete	samples/pages/p12.png	370,1935
 dialog	samples/pages/p12.png	none	none
+badges	samples/pages/p12.png	151,819,46;438,819,47;726,819,48;151,1086,49;438,1086,50;725,1086,51;151,1353,52;438,1353,53;725,1353,54
+tasknum	samples/pages/p12.png	46;47
 attop	samples/pages/p12.png	0
 bright	samples/pages/p12.png	1.0000
 lock	samples/pages/p13.png	none
@@ -140,6 +184,8 @@ tasks	samples/pages/p13.png
 panel	samples/pages/p13.png	23	23	23
 delete	samples/pages/p13.png	370,1935
 dialog	samples/pages/p13.png	none	none
+badges	samples/pages/p13.png	151,1016,52;438,1016,53;725,1016,54;151,1282,55;438,1282,56;725,1282,57;151,1549,58;438,1549,59;725,1549,60
+tasknum	samples/pages/p13.png	
 attop	samples/pages/p13.png	0
 bright	samples/pages/p13.png	1.0000
 lock	samples/pages/p14.png	none
@@ -148,6 +194,8 @@ tasks	samples/pages/p14.png
 panel	samples/pages/p14.png	23	23	23
 delete	samples/pages/p14.png	370,1935
 dialog	samples/pages/p14.png	none	none
+badges	samples/pages/p14.png	151,951,55;438,951,56;725,951,57;151,1218,58;438,1218,59;725,1218,60;151,1485,61;438,1485,62;725,1484,63
+tasknum	samples/pages/p14.png	
 attop	samples/pages/p14.png	0
 bright	samples/pages/p14.png	1.0000
 lock	samples/pages/p15.png	none
@@ -156,6 +204,8 @@ tasks	samples/pages/p15.png
 panel	samples/pages/p15.png	23	23	23
 delete	samples/pages/p15.png	370,1935
 dialog	samples/pages/p15.png	none	none
+badges	samples/pages/p15.png	151,881,58;438,881,59;725,881,60;151,1148,61;438,1148,62;725,1147,63;151,1414,64;438,1414,65;725,1414,66
+tasknum	samples/pages/p15.png	
 attop	samples/pages/p15.png	0
 bright	samples/pages/p15.png	1.0000
 lock	samples/screen1.png	457,1324
@@ -164,6 +214,8 @@ tasks	samples/screen1.png	444,995,0,14,14,14;159,1261,1,12,12,12;156,1528,0,28,2
 panel	samples/screen1.png	12	12	12
 delete	samples/screen1.png	370,1935
 dialog	samples/screen1.png	none	none
+badges	samples/screen1.png	151,828,1;438,828,2;725,828,3;151,1095,4;438,1095,5;725,1095,6;151,1361,7;438,1361,8;725,1361,9
+tasknum	samples/screen1.png	2;4;7;8
 attop	samples/screen1.png	1
 bright	samples/screen1.png	1.0000
 lock	samples/screen2.png	287,1171
@@ -172,6 +224,8 @@ tasks	samples/screen2.png	157,875,0,14,14,14;157,1409,0,14,14,14
 panel	samples/screen2.png	12	12	12
 delete	samples/screen2.png	370,1935
 dialog	samples/screen2.png	none	none
+badges	samples/screen2.png	151,975,13;438,975,14;725,975,15;151,1242,16;438,1242,17;725,1242,18;151,1508,19;438,1508,20;725,1509,21
+tasknum	samples/screen2.png	-;16
 attop	samples/screen2.png	0
 bright	samples/screen2.png	1.0000
 lock	samples/screen3.png	527,980
@@ -180,6 +234,8 @@ tasks	samples/screen3.png	444,910,0,23,23,23
 panel	samples/screen3.png	12	12	12
 delete	samples/screen3.png	370,1935
 dialog	samples/screen3.png	none	none
+badges	samples/screen3.png	151,1010,25;438,1010,26;725,1010,27;151,1277,28;438,1277,29;725,1277,30;151,1544,31;438,1544,32;725,1543,33
+tasknum	samples/screen3.png	-
 attop	samples/screen3.png	0
 bright	samples/screen3.png	1.0000
 lock	samples/screen4.png	596,1391
@@ -188,6 +244,8 @@ tasks	samples/screen4.png	444,1359,0,23,23,23;730,1359,0,28,28,28
 panel	samples/screen4.png	12	12	12
 delete	samples/screen4.png	370,1935
 dialog	samples/screen4.png	none	none
+badges	samples/screen4.png	151,926,34;438,925,35;725,925,36;151,1192,37;439,1192,38;725,1192,39;151,1459,40;438,1459,41;725,1459,42
+tasknum	samples/screen4.png	38;39
 attop	samples/screen4.png	0
 bright	samples/screen4.png	1.0000
 lock	samples/screen5.png	447,1120
@@ -196,6 +254,8 @@ tasks	samples/screen5.png	156,831,0,28,28,28;444,831,0,25,25,25;156,1364,0,28,28
 panel	samples/screen5.png	12	12	12
 delete	samples/screen5.png	370,1935
 dialog	samples/screen5.png	none	none
+badges	samples/screen5.png	151,931,43;438,931,44;725,931,45;151,1197,46;438,1197,47;726,1197,48;151,1464,49;438,1464,50;725,1465,51
+tasknum	samples/screen5.png	-;-;46;47
 attop	samples/screen5.png	0
 bright	samples/screen5.png	1.0000
 lock	samples/screen6.png	none
@@ -204,6 +264,8 @@ tasks	samples/screen6.png
 panel	samples/screen6.png	12	12	12
 delete	samples/screen6.png	370,1935
 dialog	samples/screen6.png	none	none
+badges	samples/screen6.png	151,1045,55;438,1045,56;725,1045,57;151,1312,58;438,1312,59;725,1312,60;151,1579,61;438,1579,62;725,1578,63
+tasknum	samples/screen6.png	
 attop	samples/screen6.png	0
 bright	samples/screen6.png	1.0000
 lock	samples/screen7.png	286,1578
@@ -212,6 +274,8 @@ tasks	samples/screen7.png	156,1555,0,28,28,28
 panel	samples/screen7.png	12	12	12
 delete	samples/screen7.png	370,1935
 dialog	samples/screen7.png	none	none
+badges	samples/screen7.png	151,855,58;438,855,59;725,855,60;151,1122,61;438,1122,62;725,1122,63;151,1388,64;438,1388,65;725,1388,66
+tasknum	samples/screen7.png	64
 attop	samples/screen7.png	0
 bright	samples/screen7.png	1.0000
 lock	samples/screen8.png	286,1578
@@ -220,6 +284,8 @@ tasks	samples/screen8.png	156,1555,0,56,56,56
 panel	samples/screen8.png	21	21	21
 delete	samples/screen8.png	none
 dialog	samples/screen8.png	none	none
+badges	samples/screen8.png	151,855,58;438,855,59;725,855,60;151,1122,61;438,1122,62;725,1122,63;151,1388,64;438,1388,65;725,1388,66
+tasknum	samples/screen8.png	64
 attop	samples/screen8.png	0
 bright	samples/screen8.png	1.0000
 lock	samples/screen9.png	450,1305
@@ -228,6 +294,8 @@ tasks	samples/screen9.png	444,995,0,14,14,14;156,1528,0,28,28,28;443,1528,0,28,2
 panel	samples/screen9.png	21	21	21
 delete	samples/screen9.png	none
 dialog	samples/screen9.png	none	none
+badges	samples/screen9.png	151,828,1;438,828,2;725,828,3;151,1095,4;438,1095,5;725,1095,6;151,1361,7;438,1361,8;725,1361,9
+tasknum	samples/screen9.png	2;7;8
 attop	samples/screen9.png	1
 bright	samples/screen9.png	1.0000
 lock	samples/tab/screen1.png	693,1059
@@ -236,6 +304,8 @@ tasks	samples/tab/screen1.png	236,1022,0,14,14,14;670,1022,0,9,9,9;1092,1022,0,9
 panel	samples/tab/screen1.png	-	-	-
 delete	samples/tab/screen1.png	none
 dialog	samples/tab/screen1.png	none	none
+badges	samples/tab/screen1.png	227,776,1;649,776,2;1072,776,3;227,1169,4;649,1169,5;1072,1169,6;226,1562,7;649,1562,8;1072,1562,9
+tasknum	samples/tab/screen1.png	1;2;3;7;8
 attop	samples/tab/screen1.png	1
 bright	samples/tab/screen1.png	0.9895
 lock	samples/tab/selected.png	693,1059
@@ -244,6 +314,8 @@ tasks	samples/tab/selected.png	236,1022,1,14,14,14;670,1022,0,9,9,9;1092,1022,0,
 panel	samples/tab/selected.png	14	14	14
 delete	samples/tab/selected.png	550,2407
 dialog	samples/tab/selected.png	none	none
+badges	samples/tab/selected.png	227,776,1;649,776,2;1072,776,3;227,1169,4;649,1169,5;1072,1169,6;226,1562,7;649,1562,8;1072,1562,9
+tasknum	samples/tab/selected.png	1;2;3;7;8
 attop	samples/tab/selected.png	1
 bright	samples/tab/selected.png	0.9895
 shift	samples/pages/p00.png	samples/pages/p01.png	250	336	0.9727

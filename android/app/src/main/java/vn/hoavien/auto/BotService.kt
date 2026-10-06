@@ -43,6 +43,9 @@ const val SCREENSHOT_NO_RESPONSE = -1               // mã lỗi riêng: hệ th
 private const val MAX_DEBUG_IMAGES = 100       // ~3MB/ảnh trên máy 1600x2560
 private val FILE_TIME = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss-SSS")
 
+/** Bot tự dừng hẳn vì không thể làm được gì (ví dụ tài khoản không có nút Xóa); reason hiện cho người dùng. */
+class StopBot(val reason: String) : Exception(reason)
+
 class ScreenshotFailed(val code: Int) : RuntimeException("chụp màn hình lỗi (mã $code)")
 
 /** Ảnh chụp màn hình (BGR) và số đo: thời gian chờ hệ thống, thời gian chuyển ảnh,
@@ -86,6 +89,23 @@ class BotService : AccessibilityService() {
         overlay = Overlay(this).also { it.show() }
         instance = this
         AppLog.i("Đã bật dịch vụ Trợ năng. Mở game ở bảng Nhiệm Vụ rồi bấm ▶ trên bảng nổi.")
+        if (prefs.running) {
+            AppLog.i("Tiếp tục chạy (dịch vụ vừa khởi động lại).")
+            startBot()
+        } else {
+            BotStatus.set("Sẵn sàng · hôm nay đã xóa ${prefs.deletedToday()}")
+        }
+    }
+
+    /** ▶ Chạy: quét liên tục theo chu kỳ; nhớ trạng thái để dịch vụ khởi động lại thì chạy tiếp. */
+    fun startBot() {
+        prefs.running = true
+        runJob("Chạy (mỗi ${prefs.intervalMin} phút)") { bot.run(once = false, dryRun = false) }
+    }
+
+    /** Thử 1 lượt: chỉ báo những nhiệm vụ sẽ xóa, không xóa thật. */
+    fun startDryRun() {
+        runJob("Chạy thử 1 lượt") { bot.run(once = true, dryRun = true) }
     }
 
     // ---------------------------------------------------------------- Tác vụ
@@ -100,16 +120,32 @@ class BotService : AccessibilityService() {
             } catch (e: CancellationException) {
                 AppLog.i("Đã dừng.")
                 throw e
+            } catch (e: StopBot) {
+                prefs.running = false
+                AppLog.i(e.reason)
+                Notifier.show(this@BotService, Notifier.ID_STOPPED, "Hoa Viên Auto đã dừng", e.reason)
             } catch (e: Exception) {
+                prefs.running = false
                 AppLog.e("Lỗi: ${e.message ?: e}", e)
+                Notifier.show(this@BotService, Notifier.ID_STOPPED, "Hoa Viên Auto dừng vì lỗi",
+                    "${e.message ?: e}. Mở app, bấm Sao chép nhật ký và gửi cho người cài app.")
             }
         }
         job = j
         onJobChanged(name)
-        j.invokeOnCompletion { main.post { if (job === j) onJobChanged(null) } }
+        j.invokeOnCompletion {
+            main.post {
+                if (job === j) {
+                    onJobChanged(null)
+                    BotStatus.set("Đã dừng · hôm nay đã xóa ${prefs.deletedToday()}")
+                }
+            }
+        }
     }
 
+    /** ■: dừng tác vụ đang chạy (người dùng chủ động dừng nên không tự chạy tiếp nữa). */
     fun stopJob() {
+        prefs.running = false
         job?.cancel()
     }
 
@@ -156,6 +192,16 @@ class BotService : AccessibilityService() {
 
     /** Vùng nút ≡ của bảng nổi trên màn hình, để kiểm tra bảng nổi có lọt vào ảnh chụp không. */
     fun overlayHandle() = overlay?.handleOnScreen()
+
+    fun overlayBounds() = overlay?.boundsOnScreen()
+
+    fun resetOverlayPosition() {
+        overlay?.resetPosition()
+    }
+
+    fun refreshOverlay() {
+        overlay?.refreshOptions()
+    }
 
     // ---------------------------------------------------------------- Chụp màn hình
 

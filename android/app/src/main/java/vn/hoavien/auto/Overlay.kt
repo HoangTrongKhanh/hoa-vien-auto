@@ -34,12 +34,14 @@ class Overlay(private val svc: BotService) {
         PixelFormat.TRANSLUCENT,
     ).apply {
         gravity = Gravity.TOP or Gravity.START
-        x = dp(4)
-        y = dp(28)
+        x = svc.prefs.overlayX.takeIf { it >= 0 } ?: defaultX()
+        y = svc.prefs.overlayY.takeIf { it >= 0 } ?: defaultY()
     }
     private val root = LinearLayout(svc)
     private val handle = TextView(svc)
+    private val statusView = TextView(svc)
     private val logView = TextView(svc)
+    private lateinit var moreButton: TextView
     private val probeRow = LinearLayout(svc)
     private val actions = mutableListOf<TextView>()     // các nút bắt đầu tác vụ: tắt khi đang chạy
     private val extras = mutableListOf<View>()          // ẩn khi thu gọn
@@ -62,7 +64,13 @@ class Overlay(private val svc: BotService) {
         logView.scrollTo(0, layout.getLineTop(first))
     }
 
+    private val statusListener: () -> Unit = { statusView.text = BotStatus.text }
+
     private fun dp(v: Int) = (v * density).roundToInt()
+
+    // Vị trí mặc định: mép trên, phía trên tab "Nhiệm Vụ" của game.
+    private fun defaultX() = dp(4)
+    private fun defaultY() = dp(28)
 
     init {
         root.orientation = LinearLayout.VERTICAL
@@ -79,16 +87,12 @@ class Overlay(private val svc: BotService) {
         }
         row.addView(handle, margins())
         val bot = svc.bot
-        actions += chip("▶ Chạy", 0xFF2E7D32.toInt()) {
-            svc.runJob("Chạy (mỗi ${svc.prefs.intervalMin} phút)") { bot.run(once = false, dryRun = false) }
-        }
-        actions += chip("Thử 1 lượt", 0xFF455A64.toInt()) {
-            svc.runJob("Chạy thử 1 lượt") { bot.run(once = true, dryRun = true) }
-        }
+        actions += chip("▶ Chạy", 0xFF2E7D32.toInt()) { svc.startBot() }
+        actions += chip("Thử 1 lượt", 0xFF455A64.toInt()) { svc.startDryRun() }
         for (b in actions) row.addView(b, margins())
         stopButton = chip("■", 0xFFC62828.toInt()) { svc.stopJob() }.also { row.addView(it, margins()) }
-        val more = chip("⋯", 0xFF455A64.toInt()) { setProbesShown(!probesShown) }.also { row.addView(it, margins()) }
-        extras += actions + stopButton + more
+        moreButton = chip("⋯", 0xFF455A64.toInt()) { setProbesShown(!probesShown) }.also { row.addView(it, margins()) }
+        extras += actions + stopButton + moreButton
         root.addView(row)
 
         // Các bài thử từng thao tác (dùng khi cài lên máy mới), ẩn sau nút ⋯.
@@ -104,6 +108,17 @@ class Overlay(private val svc: BotService) {
             actions += chip(label, 0xFF455A64.toInt()) { action() }.also { probeRow.addView(it, margins()) }
         }
         root.addView(probeRow)
+        statusView.apply {
+            textSize = 11f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.WHITE)
+            maxLines = 1
+            setPadding(dp(6), dp(3), dp(6), dp(3))
+            background = rounded(0xE0263238.toInt())
+        }
+        root.addView(statusView, LinearLayout.LayoutParams(dp(300), LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+            setMargins(dp(1), dp(1), dp(1), 0)
+        })
         logView.apply {
             textSize = 10f
             setTextColor(Color.WHITE)
@@ -117,7 +132,13 @@ class Overlay(private val svc: BotService) {
         extras += logView
         svc.onJobChanged = ::showState
         showState(null)
-        setProbesShown(false)
+        refreshOptions()
+    }
+
+    /** Áp dụng lại cài đặt từ màn hình chính (hiện/ẩn nút ⋯). */
+    fun refreshOptions() {
+        moreButton.visibility = if (svc.prefs.showProbes && !collapsed) View.VISIBLE else View.GONE
+        if (!svc.prefs.showProbes) setProbesShown(false)
     }
 
     private fun rounded(color: Int) = GradientDrawable().apply {
@@ -153,6 +174,7 @@ class Overlay(private val svc: BotService) {
         val vis = if (c) View.GONE else View.VISIBLE
         for (v in extras) v.visibility = vis
         probeRow.visibility = if (c || !probesShown) View.GONE else View.VISIBLE
+        refreshOptions()
     }
 
     private fun setProbesShown(shown: Boolean) {
@@ -163,7 +185,26 @@ class Overlay(private val svc: BotService) {
     fun show() {
         wm.addView(root, params)
         AppLog.addListener(logListener)
+        BotStatus.addListener(statusListener)
         logListener()
+        statusListener()
+    }
+
+    /** Toàn bộ bảng nổi trên màn hình (null nếu đang ẩn). */
+    fun boundsOnScreen(): Box? {
+        if (!root.isAttachedToWindow || root.height == 0 || root.visibility != View.VISIBLE) return null
+        val loc = IntArray(2)
+        root.getLocationOnScreen(loc)
+        return Box(loc[0], loc[1], loc[0] + root.width, loc[1] + root.height)
+    }
+
+    /** Đưa bảng nổi về vị trí mặc định (khi nó bị kéo đè lên bảng game). */
+    fun resetPosition() {
+        params.x = defaultX()
+        params.y = defaultY()
+        svc.prefs.overlayX = -1
+        svc.prefs.overlayY = -1
+        if (root.isAttachedToWindow) wm.updateViewLayout(root, params)
     }
 
     fun setVisible(visible: Boolean) {
@@ -172,6 +213,7 @@ class Overlay(private val svc: BotService) {
 
     fun hide() {
         AppLog.removeListener(logListener)
+        BotStatus.removeListener(statusListener)
         runCatching { wm.removeView(root) }
     }
 
@@ -212,7 +254,12 @@ class Overlay(private val svc: BotService) {
                         wm.updateViewLayout(root, params)
                     }
                 }
-                MotionEvent.ACTION_UP -> if (!moved) setCollapsed(!collapsed)
+                MotionEvent.ACTION_UP -> if (!moved) {
+                    setCollapsed(!collapsed)
+                } else {
+                    svc.prefs.overlayX = params.x
+                    svc.prefs.overlayY = params.y
+                }
             }
             return true
         }

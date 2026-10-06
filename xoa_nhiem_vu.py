@@ -64,6 +64,11 @@ BUTTON_THRESHOLD = 0.80
 DIGIT_THRESHOLD = 0.65      # dưới mức này coi như không phải chữ số
 DIGIT_MIN_MARGIN = 0.10     # chữ số khác giống ngang ngửa trong khoảng này vẫn bị coi là khả dĩ
 DIGIT_SIZE = 32
+# Huy hiệu số thứ tự ô (1, 2, 3...) ở góc trên-trái mỗi ô: vòng tròn cam, chữ số ruột kem viền nâu.
+BADGE_COLS = (150, 438, 726)                # x góc trên-trái huy hiệu ở 3 cột, px máy gốc
+BADGE_TO_COMPASS = (5, 166)                 # la bàn của ô nằm lệch so với huy hiệu bấy nhiêu px máy gốc
+BADGE_THRESHOLD = 0.5                       # khớp viền tròn (khớp đúng >= 0.6)
+BADGE_DIGIT_THRESHOLD = 0.6                 # chữ số trong huy hiệu (đúng thường >= 0.75)
 
 log = logging.getLogger("xoa_nhiem_vu")
 
@@ -212,6 +217,12 @@ class Templates:
             self.digits.append((int(f.name[0]), m > 127))
         if not self.digits:
             raise RuntimeError("thiếu mẫu chữ số trong templates/digits")
+        # Huy hiệu: mẫu trung bình (chỉ dùng phần viền) và chữ số ruột kem, tên file <chữ số>_<số lỗ>_<thứ tự>.png.
+        self.badge_blank = load_image(tpl_dir / "badge_blank.png")
+        self.badge_digits = []      # (chữ số, số lỗ, mask DIGIT_SIZE x DIGIT_SIZE)
+        for f in sorted((tpl_dir / "badge_digits").glob("*.png")):
+            d, h, _ = f.stem.split("_")
+            self.badge_digits.append((int(d), int(h), cv2.imread(str(f), cv2.IMREAD_GRAYSCALE) > 127))
 
 
 class UI:
@@ -232,6 +243,8 @@ class UI:
         self.btn_cancel = scale(base.btn_cancel)
         self.badge_1 = scale(base.badge_1)
         self.digits = base.digits               # chữ số đã chuẩn hoá kích thước, không cần co giãn
+        self.badge_blank = scale(base.badge_blank)
+        self.badge_digits = base.badge_digits
         self.grid = self.box(GRID)
         self.panel_points = self.box((PANEL[0], PANEL_POINTS_Y[0], PANEL[2], PANEL_POINTS_Y[1]))
         self.delete_region = self.box(DELETE_BTN_REGION)
@@ -341,6 +354,27 @@ def ink_map(roi):
     return np.clip((bg - gray) / (bg - dark), 0.0, 1.0)
 
 
+FUSED_RATIO = 1.1      # chữ số đơn rộng tối đa ~0.95 lần chiều cao; rộng hơn bấy nhiêu là 2 chữ số dính nhau
+
+
+def split_fused(mask, box):
+    """Tách khung 2 chữ số dính nhau (ví dụ "21") tại cột ít nét nhất ở khoảng giữa; khung bình thường giữ nguyên."""
+    x, y, w, h = box
+    if w <= h * FUSED_RATIO:
+        return [box]
+    sub = mask[y:y + h, x:x + w]
+    cols = sub.sum(axis=0)
+    lo, hi = int(w * 0.3), int(w * 0.7)
+    cut = lo + int(np.argmin(cols[lo:hi + 1]))
+    out = []
+    for a, b in ((0, cut), (cut, w)):
+        part = sub[:, a:b]
+        rows, cs = np.where(part.any(axis=1))[0], np.where(part.any(axis=0))[0]
+        if len(rows):
+            out.append((x + a + int(cs[0]), y + int(rows[0]), int(cs[-1] - cs[0] + 1), int(rows[-1] - rows[0] + 1)))
+    return out
+
+
 def digit_boxes(ink, min_height=16):
     """Khung (x, y, w, h) của từng chữ số, trái sang phải."""
     mask = (ink > 0.5).astype(np.uint8)
@@ -349,7 +383,7 @@ def digit_boxes(ink, min_height=16):
     for i in range(1, n):
         x, y, w, h, area = (int(v) for v in stats[i])
         if h >= min_height and area >= 40 and x > 0:     # x > 0: bỏ mép icon bị cắt ở biên trái
-            boxes.append((x, y, w, h))
+            boxes.extend(split_fused(mask, (x, y, w, h)))
     return sorted(boxes)
 
 
@@ -409,6 +443,97 @@ def read_number(img, box, ui):
         readings = [r + a for r in readings for a in alts]
     values = [int(r) for r in readings]
     return Reading(int("".join(best_digits)), min(values), max(values), " ".join(parts))
+
+
+def _circle_mask(h, w, r):
+    m = np.zeros((h, w), np.uint8)
+    cv2.circle(m, (w // 2, h // 2), int(round(min(w, h) * r)), 1, -1)
+    return m
+
+
+def badge_components(c):
+    """Mask (độ phân giải gốc) của từng chữ số trong ảnh huy hiệu c, trái sang phải. Tách theo phần ruột kem:
+    viền nâu của 2 chữ số hay dính nhau nhưng ruột thì luôn rời. Ruột = phần "trắng" nhất (kênh nhỏ nhất cao)
+    trong vòng tròn; ngưỡng ở giữa nền tròn (trung vị) và mức sáng nhất, vì màu ruột khác nhau giữa các máy."""
+    mn = c.min(axis=2).astype(np.float32)
+    h, w = mn.shape
+    circ = _circle_mask(h, w, 0.42).astype(bool)
+    vals = mn[circ]
+    bg, hi = float(np.median(vals)), float(np.percentile(vals, 97))
+    if hi - bg < 30:
+        return []
+    fill = ((mn > (bg + hi) / 2) & circ).astype(np.uint8)
+    n, lab, st, _ = cv2.connectedComponentsWithStats(fill, 8)
+    out = []
+    for i in range(1, n):
+        x, y, bw, bh, a = (int(v) for v in st[i])
+        if bh >= h * 0.35 and a >= 12 * (h / 44) ** 2:
+            out.append((x, (lab[y:y + bh, x:x + bw] == i).astype(np.uint8)))
+    return [m for _, m in sorted(out, key=lambda t: t[0])]
+
+
+def mask_holes(m):
+    """Số lỗ của mask (vùng nền không chạm biên): 0/4/6/9 có 1, 8 có 2."""
+    pad = np.pad(1 - m, 1, constant_values=1).astype(np.uint8)
+    return cv2.connectedComponents(pad, connectivity=4)[0] - 2
+
+
+def normalize_mask(m):
+    return normalize_digit(m.astype(np.float32), (0, 0, m.shape[1], m.shape[0])) > 0.5
+
+
+def read_badge(c, ui):
+    """Số thứ tự trong ảnh huy hiệu c, None nếu không đọc chắc được."""
+    comps = badge_components(c)
+    if not comps or len(comps) > 2:
+        return None
+    s = ""
+    for m in comps:
+        mk, h = normalize_mask(m), mask_holes(m)
+        best = max(((1.0 - float(np.mean(mk != t)) * 2.5, d) for d, th, t in ui.badge_digits if th == h), default=None)
+        if best is None or best[0] < BADGE_DIGIT_THRESHOLD:
+            return None
+        s += str(best[1])
+    return int(s)
+
+
+def find_badges(img, ui):
+    """Huy hiệu số thứ tự nằm trọn trong lưới: [(x, y, số hoặc None)] góc trên-trái, theo hàng rồi cột.
+    Chỉ khớp phần viền tròn (che vùng chữ số ở giữa) nên không phụ thuộc số."""
+    th, tw = ui.badge_blank.shape[:2]
+    ring = cv2.merge([1 - _circle_mask(th, tw, 0.36)] * 3)
+    gx0, gy0, gx1, gy1 = ui.grid
+    found = []
+    for cx in BADGE_COLS:
+        x0, x1 = ui.x(cx) - ui.d(10), ui.x(cx) + tw + ui.d(10)
+        res = cv2.matchTemplate(img[gy0:gy1, x0:x1], ui.badge_blank, cv2.TM_CCOEFF_NORMED, mask=ring)
+        res = np.nan_to_num(res, nan=-1.0, posinf=-1.0, neginf=-1.0)
+        col, arg = res.max(axis=1), res.argmax(axis=1)
+        keep = []
+        for y in np.argsort(-col, kind="stable"):
+            if col[y] < BADGE_THRESHOLD:
+                break
+            if all(abs(int(y) - k) > ui.d(120) for k in keep):
+                keep.append(int(y))
+        for y in keep:
+            bx, by = x0 + int(arg[y]), gy0 + y
+            found.append((bx, by, read_badge(img[by:by + th, bx:bx + tw], ui)))
+    rows = []                                   # gom theo hàng (lệch nhau vài px giữa các cột)
+    for b in sorted(found, key=lambda b: b[1]):
+        if rows and abs(b[1] - rows[-1][0][1]) < ui.d(40):
+            rows[-1].append(b)
+        else:
+            rows.append([b])
+    return [b for r in rows for b in sorted(r, key=lambda b: b[0])]
+
+
+def task_number(task, badges, ui):
+    """Số thứ tự ô của nhiệm vụ (huy hiệu cùng ô), None nếu huy hiệu không hiện hoặc không đọc được."""
+    dx, dy = ui.d(BADGE_TO_COMPASS[0]), ui.d(BADGE_TO_COMPASS[1])
+    for bx, by, n in badges:
+        if abs(task.x - bx - dx) <= ui.d(20) and abs(task.y - by - dy) <= ui.d(20):
+            return n
+    return None
 
 
 def decide(reading, max_points):

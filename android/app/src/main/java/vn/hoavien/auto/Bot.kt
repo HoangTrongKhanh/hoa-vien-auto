@@ -1,10 +1,13 @@
 package vn.hoavien.auto
 
+import android.os.BatteryManager
 import android.os.SystemClock
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.opencv.core.Mat
+import vn.hoavien.auto.vision.BADGES_PER_ROW
+import vn.hoavien.auto.vision.Box
 import vn.hoavien.auto.vision.Reading
 import vn.hoavien.auto.vision.SHIFT_MATCH_THRESHOLD
 import vn.hoavien.auto.vision.Task
@@ -13,6 +16,7 @@ import vn.hoavien.auto.vision.Verdict
 import vn.hoavien.auto.vision.annotate
 import vn.hoavien.auto.vision.atTop
 import vn.hoavien.auto.vision.decide
+import vn.hoavien.auto.vision.findBadges
 import vn.hoavien.auto.vision.findCompasses
 import vn.hoavien.auto.vision.findDeleteButton
 import vn.hoavien.auto.vision.findDialogButton
@@ -22,6 +26,7 @@ import vn.hoavien.auto.vision.gridUnchanged
 import vn.hoavien.auto.vision.isSelected
 import vn.hoavien.auto.vision.readPanelPoints
 import vn.hoavien.auto.vision.tabBrightness
+import vn.hoavien.auto.vision.taskNumber
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import kotlin.math.abs
@@ -48,11 +53,19 @@ private const val SCROLL_WAIT = 50L         // kéo có dừng trước khi nh�
 // Kéo mà danh sách không cuộn chưa chắc đã tới cuối: game nạp dần các ô, có lúc danh sách tạm cụt (ví dụ dừng ở ô 27
 // trong khi có 66 ô) rồi mới hiện tiếp. Chỉ coi là hết khi kéo bấy nhiêu lần, cách nhau END_RETRY_WAIT, đều không cuộn.
 private const val END_CONFIRM_DRAGS = 3
+private const val END_CONFIRM_DRAGS_KNOWN_END = 1    // đã thấy ô cuối (số thứ tự lớn nhất từng gặp): không cần kéo lại
+private const val END_CONFIRM_DRAGS_EARLY = 6         // chưa tới số ô lớn nhất từng gặp: kéo thêm, chờ game nạp
 private const val END_RETRY_WAIT = 1000L
 private const val SETTLE_TIMEOUT = 4500L    // ở cuối danh sách: chờ hiệu ứng nảy đàn hồi kết thúc
 private const val TOP_TIMEOUT = 2000L       // vuốt lên đầu: chờ danh sách dừng ở trên cùng
 private const val NOT_READY_RETRY = 20_000L // chưa thấy bảng Nhiệm Vụ: thử lại sau bấy nhiêu ms
 private const val ONCE_WAIT_LIMIT = 180_000L    // chạy 1 lượt: chờ tối đa bấy nhiêu ms để bảng Nhiệm Vụ hiện ra
+private const val NOT_READY_NOTIFY = 3      // bấy nhiêu lần liền không quét được (~1 phút) thì gửi thông báo
+private const val LOW_BATTERY = 20          // % pin coi là yếu (khi không sạc)
+// Bấy nhiêu ô liền có điểm thấp mà không có nút Xóa, và chưa xóa được ô nào: tài khoản không có chức năng xóa.
+private const val NO_DELETE_FEATURE = 3
+// Vùng game dùng để nhận diện (tab "Nhiệm Vụ" tới hết khung chi tiết), px máy gốc: bảng nổi không được đè lên.
+private val RECOGNITION_AREA = Box(90, 620, 1000, 2010)
 
 private enum class Scan { OK, END, LOST, ABORT, BLOCKED }
 
@@ -70,6 +83,10 @@ class Bot(private val svc: BotService) {
     private var deleted = 0
     private var unreadable = 0
     private var failures = 0
+    private var maxCard = 0                 // số thứ tự ô lớn nhất đã thấy trong lượt
+    private var noDeleteButton = 0          // số ô liên tiếp không có nút Xóa (tài khoản không có chức năng xóa?)
+    private var notReadyReason = ""         // lý do lượt gần nhất không quét được, để báo cho người dùng
+    private var batteryWarned = false
 
     private fun now() = SystemClock.uptimeMillis()
 
@@ -132,20 +149,66 @@ class Bot(private val svc: BotService) {
     suspend fun run(once: Boolean, dryRun: Boolean) {
         this.dryRun = dryRun
         AppLog.i("Bắt đầu. Xóa nhiệm vụ <= ${svc.prefs.maxPoints} điểm${if (dryRun) " (CHẠY THỬ: chỉ báo, không xóa)" else ""}.")
+        if (!once && !battery().second) AppLog.i("Máy không cắm sạc: nên cắm sạc khi để bot chạy lâu.")
         val started = now()
-        while (true) {
-            val ran = try {
-                runCycle()
-            } catch (e: ScreenshotFailed) {
-                AppLog.i("Không chụp được màn hình (mã ${e.code}).")
-                false
+        var notReady = 0
+        try {
+            while (true) {
+                checkBattery()
+                BotStatus.set(if (dryRun) "Đang chạy thử…" else "Đang quét… · hôm nay đã xóa ${svc.prefs.deletedToday()}")
+                notReadyReason = "không rõ lý do"
+                val ran = try {
+                    runCycle()
+                } catch (e: ScreenshotFailed) {
+                    AppLog.i("Không chụp được màn hình (mã ${e.code}).")
+                    notReadyReason = "không chụp được màn hình"
+                    false
+                }
+                if (ran) {
+                    notReady = 0
+                    Notifier.cancel(svc, Notifier.ID_WAITING)
+                } else if (++notReady == NOT_READY_NOTIFY) {
+                    // Không tự mở lại game: báo để người dùng xử lý. Bot vẫn tự chạy tiếp khi mọi thứ ổn lại.
+                    Notifier.show(svc, Notifier.ID_WAITING, "Hoa Viên Auto đang chờ bạn",
+                        "Đã ${notReady} lần không quét được: $notReadyReason. Bot sẽ tự chạy tiếp khi ổn lại.")
+                }
+                if (once && (ran || now() - started > ONCE_WAIT_LIMIT)) break
+                // Chưa quét được (game chưa ở bảng Nhiệm Vụ, màn hình tắt...): thử lại sớm.
+                val wait = if (ran) svc.prefs.intervalMin * 60_000L else NOT_READY_RETRY
+                val next = LocalTime.now().plusSeconds(wait / 1000).format(CLOCK)
+                if (ran) {
+                    AppLog.i("Lượt sau lúc $next.")
+                    BotStatus.set("Chờ lượt sau lúc $next · hôm nay đã xóa ${svc.prefs.deletedToday()}")
+                } else {
+                    AppLog.i("Thử lại sau ${wait / 1000} giây.")
+                    BotStatus.set("Đang chờ: $notReadyReason · thử lại lúc $next")
+                }
+                delay(wait)
             }
-            if (once && (ran || now() - started > ONCE_WAIT_LIMIT)) break
-            // Chưa quét được (game chưa ở bảng Nhiệm Vụ, màn hình tắt...): thử lại sớm.
-            val wait = if (ran) svc.prefs.intervalMin * 60_000L else NOT_READY_RETRY
-            if (ran) AppLog.i("Lượt sau lúc ${LocalTime.now().plusSeconds(wait / 1000).format(CLOCK)}.")
-            else AppLog.i("Thử lại sau ${wait / 1000} giây.")
-            delay(wait)
+        } finally {
+            Notifier.cancel(svc, Notifier.ID_WAITING)
+        }
+    }
+
+    /** (mức pin %, đang sạc). */
+    private fun battery(): Pair<Int, Boolean> {
+        val bm = svc.getSystemService(BatteryManager::class.java)
+        return bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) to bm.isCharging
+    }
+
+    /** Pin yếu mà không sạc thì báo (một lần cho tới khi cắm sạc hoặc pin lên lại). */
+    private fun checkBattery() {
+        val (level, charging) = battery()
+        if (!charging && level in 0..LOW_BATTERY) {
+            if (!batteryWarned) {
+                AppLog.i("Pin còn $level% và không sạc.")
+                Notifier.show(svc, Notifier.ID_BATTERY, "Pin yếu ($level%)",
+                    "Hãy cắm sạc để bot chạy tiếp; hết pin máy sẽ tắt và bot dừng.")
+                batteryWarned = true
+            }
+        } else if (charging || level > LOW_BATTERY + 5) {
+            if (batteryWarned) Notifier.cancel(svc, Notifier.ID_BATTERY)
+            batteryWarned = false
         }
     }
 
@@ -157,6 +220,8 @@ class Bot(private val svc: BotService) {
         deleted = 0
         unreadable = 0
         failures = 0
+        noDeleteButton = 0
+        maxCard = 0
         var complete = false
         for (restart in 1..3) {
             val (last, status) = scanPages(scrollToTop(img))
@@ -174,8 +239,14 @@ class Bot(private val svc: BotService) {
             if (restart < 3) img = shot()
         }
         if (!complete) AppLog.i("Cuộn không ổn định, lượt này có thể đã sót một số ô.")
+        val known = svc.prefs.knownLastCard
+        if (complete && maxCard > 0 && maxCard != known) {
+            if (known > 0) AppLog.i("Danh sách giờ có $maxCard ô (lần trước $known).")
+            svc.prefs.knownLastCard = maxCard
+        }
         totalDeleted += deleted
-        AppLog.i("Xong lượt: đã xóa $deleted, không đọc được $unreadable. Tổng đã xóa từ lúc chạy: $totalDeleted.")
+        val reach = if (maxCard > 0) " Đã quét tới ô $maxCard." else ""
+        AppLog.i("Xong lượt: đã xóa $deleted, không đọc được $unreadable.$reach Tổng đã xóa từ lúc chạy: $totalDeleted.")
         return true
     }
 
@@ -184,6 +255,7 @@ class Bot(private val svc: BotService) {
     private suspend fun checkReady(): Mat? {
         if (!svc.screenOn()) {
             AppLog.i("Màn hình đang tắt - hãy mở máy và mở lại bảng Nhiệm Vụ.")
+            notReadyReason = "màn hình đang tắt"
             return null
         }
         var img = shot()
@@ -191,6 +263,7 @@ class Bot(private val svc: BotService) {
         if (u != null && cpu { tabBrightness(img, u!!) } < LOCKED_BRIGHTNESS) {
             img.release()
             if (!svc.unlockGameBooster()) {
+                notReadyReason = "màn hình bị che tối (Game Booster khóa hoặc chống chạm nhầm)"
                 AppLog.i("Không mở được lớp che tối màn hình. Nếu là \"Chống chạm nhầm\" của Samsung: đừng che cạnh trên " +
                     "của máy (cảm biến tiệm cận), hoặc tắt nó trong Cài đặt > Màn hình.")
                 return null
@@ -200,6 +273,7 @@ class Bot(private val svc: BotService) {
         }
         if (u == null) {
             AppLog.i("Không thấy màn hình Nhiệm Vụ của Đấu hội - hãy mở lại bảng Nhiệm Vụ.")
+            notReadyReason = "không thấy bảng Nhiệm Vụ của Đấu hội (game bị thoát hoặc đang ở màn hình khác)"
             svc.saveImage(img, "khong-dung-man-hinh")
             img.release()
             return null
@@ -209,6 +283,15 @@ class Bot(private val svc: BotService) {
             AppLog.i("Bố cục màn hình ${img.cols()}x${img.rows()}: $u")
         }
         ui = u
+        // Bảng nổi lọt vào ảnh chụp: nếu bị kéo đè lên vùng nhận diện thì dời về mép trên.
+        val overlay = svc.overlayBounds()
+        if (overlay != null && overlay.intersects(u.box(RECOGNITION_AREA))) {
+            AppLog.i("Bảng nổi đang che bảng game - đã dời về mép trên.")
+            svc.resetOverlayPosition()
+            delay(300)
+            img.release()
+            img = shot()
+        }
         val cancel = cpu { findDialogButton(img, u.btnCancel, u) }
         if (cancel != null) {
             AppLog.i("Đang có hộp thoại xóa còn mở từ trước - bấm Hủy.")
@@ -225,6 +308,7 @@ class Bot(private val svc: BotService) {
     private suspend fun scanPages(start: Mat): Pair<Mat, Scan> {
         val u = ui!!
         var img = start
+        var prevMax = 0                         // số ô lớn nhất của trang trước, 0 = không đọc được
         for (page in 0 until 60) {
             // Màn hình bị che tối giữa lượt (Game Booster khóa, "Chống chạm nhầm"...): mọi thao tác đều vô tác dụng.
             if (cpu { tabBrightness(img, u) } < LOCKED_BRIGHTNESS) {
@@ -232,6 +316,17 @@ class Bot(private val svc: BotService) {
                 return img to Scan.BLOCKED
             }
             val tasks = cpu { findTasks(img, u) }
+            val badges = cpu { findBadges(img, u) }
+            val numbers = badges.mapNotNull { it.number }
+            // Trang sau phải nối tiếp trang trước (mỗi lần cuộn ít hơn 1 khung nhìn nên luôn có hàng chung hoặc kề nhau).
+            if (prevMax > 0 && numbers.isNotEmpty() && rowOf(numbers.min()) > rowOf(prevMax) + 1) {
+                AppLog.i("Bỏ sót hàng: trang trước tới ô $prevMax, trang này bắt đầu từ ô ${numbers.min()}.")
+                return img to Scan.LOST
+            }
+            if (numbers.isNotEmpty()) {
+                prevMax = numbers.max()
+                maxCard = maxOf(maxCard, prevMax)
+            }
             if (svc.prefs.saveImages) {
                 val marked = cpu { annotate(img, tasks, maxPoints, u) }
                 svc.saveImage(marked, "trang%02d".format(page))
@@ -242,18 +337,30 @@ class Bot(private val svc: BotService) {
                 when (decide(t.reading, maxPoints)) {
                     Verdict.UNSURE -> {
                         unreadable++
-                        AppLog.i("Không chắc điểm ở ô tại (${t.x},${t.y}) [${t.reading.detail}] - bỏ qua.")
+                        val where = taskNumber(t, badges, u)?.let { "ô số $it" } ?: "ô tại (${t.x},${t.y})"
+                        AppLog.i("Không chắc điểm ở $where [${t.reading.detail}] - bỏ qua.")
                         continue
                     }
                     Verdict.KEEP -> continue
                     Verdict.DELETE -> {}
                 }
-                AppLog.i("Tìm thấy nhiệm vụ ${t.reading.value} điểm tại (${t.x},${t.y}).")
+                val where = taskNumber(t, badges, u)?.let { "ô số $it" } ?: "ô tại (${t.x},${t.y})"
+                AppLog.i("Tìm thấy nhiệm vụ ${t.reading.value} điểm ở $where.")
                 val (ok, im) = deleteTask(t)
                 latest?.release()
                 latest = im
+                if (noDeleteButton >= NO_DELETE_FEATURE && totalDeleted + deleted == 0) {
+                    val msg = "Tài khoản này không có nút Xóa nhiệm vụ (chỉ có Nhận nhiệm vụ), bot không xóa được."
+                    if (!dryRun) {
+                        im.release()
+                        img.release()
+                        throw StopBot("$msg Bot đã dừng.")
+                    }
+                    if (noDeleteButton == NO_DELETE_FEATURE) AppLog.i("  $msg")
+                }
                 if (ok) {
                     deleted++
+                    svc.prefs.addDeletedToday()
                     failures = 0
                     if (maxDeletes != null && deleted >= maxDeletes!!) {
                         AppLog.i("Đã đủ $maxDeletes lần xóa cho lượt này.")
@@ -270,12 +377,32 @@ class Bot(private val svc: BotService) {
                 }
             }
             val base = latest?.also { img.release() } ?: img
-            val (next, status) = scrollDown(base)
+            // Biết tổng số ô (từ các lượt trước): đã thấy ô cuối thì kéo 1 lần là đủ; chưa tới thì kéo thêm cho game nạp.
+            val known = svc.prefs.knownLastCard
+            val confirm = when {
+                known <= 0 || maxCard <= 0 -> END_CONFIRM_DRAGS
+                maxCard >= known -> END_CONFIRM_DRAGS_KNOWN_END
+                else -> END_CONFIRM_DRAGS_EARLY
+            }
+            val (next, status) = scrollDown(base, confirm)
             img = next
+            if (status == Scan.END && known > 0 && maxCard in 1 until known) {
+                AppLog.i("Danh sách chỉ hiện tới ô $maxCard (lần trước có $known ô), dù đã kéo $confirm lần.")
+            }
+            if (status == Scan.LOST && prevMax > 0) {
+                // Không đo được độ cuộn, nhưng số thứ tự ô vẫn nối tiếp thì cứ quét tiếp, không cần quét lại từ đầu.
+                val nextNums = cpu { findBadges(img, u) }.mapNotNull { it.number }
+                if (nextNums.isNotEmpty() && nextNums.max() > prevMax && rowOf(nextNums.min()) <= rowOf(prevMax) + 1) {
+                    AppLog.i("  Không đo được độ cuộn nhưng số thứ tự ô vẫn liền mạch (${nextNums.min()}–${nextNums.max()}), quét tiếp.")
+                    continue
+                }
+            }
             if (status != Scan.OK) return img to status
         }
         return img to Scan.END
     }
+
+    private fun rowOf(card: Int) = (card - 1) / BADGES_PER_ROW
 
     /** Vuốt nhanh nhiều lần về đầu danh sách. Nhận ảnh hiện tại, trả về ảnh mới. */
     private suspend fun scrollToTop(start: Mat): Mat {
@@ -315,10 +442,10 @@ class Bot(private val svc: BotService) {
     /** Cuộn xuống một bước. Nhận ảnh hiện tại (làm mốc đo), trả về (ảnh mới, OK | END | LOST).
      *  Khác bản Python: chụp màn hình giờ nhanh (~0.1s sau khi nhả tay) nên ở cuối danh sách hay bắt đúng lúc danh sách
      *  đang bị kéo lố và nảy về, đo nhầm thành đã cuộn được. Vì vậy luôn chờ lưới đứng yên rồi mới đo. */
-    private suspend fun scrollDown(img: Mat): Pair<Mat, Scan> {
+    private suspend fun scrollDown(img: Mat, confirmDrags: Int = END_CONFIRM_DRAGS): Pair<Mat, Scan> {
         val u = ui!!
         var settled: Mat? = null
-        for (attempt in 0 until END_CONFIRM_DRAGS) {
+        for (attempt in 0 until confirmDrags) {
             val g = (gap + attempt) % u.dragGaps.size
             if (attempt > 0) delay(END_RETRY_WAIT)  // cho game kịp nạp thêm ô
             svc.drag(u.dragGaps[g], u.y(DRAG_FROM_Y), u.y(DRAG_FROM_Y - DRAG_DISTANCE), DRAG_MOVE_MS, DRAG_HOLD_MS)
@@ -333,7 +460,7 @@ class Bot(private val svc: BotService) {
                 break
             }
             // Đứng yên hoặc nhúc nhích rồi nảy về đúng chỗ cũ: có thể đã ở cuối, kéo lại cho chắc.
-            if (attempt == END_CONFIRM_DRAGS - 1) {
+            if (attempt == confirmDrags - 1) {
                 img.release()
                 return still to Scan.END
             }
@@ -398,9 +525,11 @@ class Bot(private val svc: BotService) {
         }
         val btn = cpu { findDeleteButton(cur, u) }
         if (btn == null) {
+            noDeleteButton++
             AppLog.i("  Bỏ qua: khung chi tiết không có nút Xóa (vừa có người nhận, hoặc tài khoản không có chức năng xóa nhiệm vụ).")
             return false to cur
         }
+        noDeleteButton = 0
         if (decide(panel, maxPoints) != Verdict.DELETE) {
             AppLog.i("  Bỏ qua: khung chi tiết đọc được ${panel.value} điểm [${panel.detail}].")
             return false to cur

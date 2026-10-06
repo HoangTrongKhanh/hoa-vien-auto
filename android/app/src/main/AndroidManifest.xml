@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Để nút "Mở game" trên màn hình chính mở được game (Android 11+ giới hạn việc nhìn thấy app khác). -->
+    <queries>
+        <package android:name="com.myflower.gp" />
+    </queries>
+
     <application
         android:name=".App"
         android:allowBackup="false"
