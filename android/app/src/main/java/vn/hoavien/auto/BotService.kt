@@ -22,6 +22,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.opencv.android.Utils
 import org.opencv.core.Mat
 import org.opencv.imgcodecs.Imgcodecs
@@ -32,6 +33,12 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.Executors
 import kotlin.coroutines.resume
+
+// Hệ thống có lúc không bao giờ trả lời yêu cầu chụp màn hình / thao tác (ví dụ khi lớp "Chống chạm nhầm" của Samsung
+// đang che màn hình). Quá hạn thì coi là thất bại thay vì chờ mãi.
+private const val SCREENSHOT_TIMEOUT = 5000L
+private const val GESTURE_TIMEOUT_EXTRA = 2000L     // cộng thêm vào thời lượng cử chỉ
+const val SCREENSHOT_NO_RESPONSE = -1               // mã lỗi riêng: hệ thống không trả lời yêu cầu chụp
 
 private const val MAX_DEBUG_IMAGES = 100       // ~3MB/ảnh trên máy 1600x2560
 private val FILE_TIME = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss-SSS")
@@ -156,7 +163,7 @@ class BotService : AccessibilityService() {
         var retries = 0
         while (true) {
             val t0 = SystemClock.uptimeMillis()
-            val result = requestScreenshot()
+            val result = withTimeoutOrNull(SCREENSHOT_TIMEOUT) { requestScreenshot() } ?: SCREENSHOT_NO_RESPONSE
             val t1 = SystemClock.uptimeMillis()
             if (result is ScreenshotResult) {
                 val img = withContext(Dispatchers.Default) { toMat(result) }
@@ -209,17 +216,25 @@ class BotService : AccessibilityService() {
 
     // ---------------------------------------------------------------- Thao tác
 
-    private suspend fun dispatch(gesture: GestureDescription): Boolean = suspendCancellableCoroutine { cont ->
-        val callback = object : GestureResultCallback() {
-            override fun onCompleted(d: GestureDescription?) {
-                if (cont.isActive) cont.resume(true)
-            }
+    /** Thực hiện cử chỉ; false nếu bị huỷ hoặc hệ thống không trả lời trong thời lượng cử chỉ + GESTURE_TIMEOUT_EXTRA. */
+    private suspend fun dispatch(gesture: GestureDescription): Boolean {
+        val duration = (0 until gesture.strokeCount).maxOf { gesture.getStroke(it).let { s -> s.startTime + s.duration } }
+        val result = withTimeoutOrNull(duration + GESTURE_TIMEOUT_EXTRA) {
+            suspendCancellableCoroutine { cont ->
+                val callback = object : GestureResultCallback() {
+                    override fun onCompleted(d: GestureDescription?) {
+                        if (cont.isActive) cont.resume(true)
+                    }
 
-            override fun onCancelled(d: GestureDescription?) {
-                if (cont.isActive) cont.resume(false)
+                    override fun onCancelled(d: GestureDescription?) {
+                        if (cont.isActive) cont.resume(false)
+                    }
+                }
+                if (!dispatchGesture(gesture, callback, null)) cont.resume(false)
             }
         }
-        if (!dispatchGesture(gesture, callback, null)) cont.resume(false)
+        if (result == null) AppLog.i("  Hệ thống không phản hồi thao tác chạm (màn hình đang bị che?).")
+        return result == true
     }
 
     private fun line(x0: Int, y0: Int, x1: Int, y1: Int) = Path().apply {

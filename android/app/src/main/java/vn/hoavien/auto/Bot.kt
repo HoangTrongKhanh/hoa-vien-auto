@@ -54,7 +54,7 @@ private const val TOP_TIMEOUT = 2000L       // vuốt lên đầu: chờ danh s�
 private const val NOT_READY_RETRY = 20_000L // chưa thấy bảng Nhiệm Vụ: thử lại sau bấy nhiêu ms
 private const val ONCE_WAIT_LIMIT = 180_000L    // chạy 1 lượt: chờ tối đa bấy nhiêu ms để bảng Nhiệm Vụ hiện ra
 
-private enum class Scan { OK, END, LOST, ABORT }
+private enum class Scan { OK, END, LOST, ABORT, BLOCKED }
 
 /** Bot xóa nhiệm vụ Đấu hội có điểm <= ngưỡng, chuyển từ lớp Bot của xoa_nhiem_vu.py.
  *  Quy ước ảnh: hàm nhận ảnh rồi trả về ảnh mới thì đã giải phóng ảnh cũ; ảnh trả về do người gọi giải phóng. */
@@ -161,6 +161,11 @@ class Bot(private val svc: BotService) {
         for (restart in 1..3) {
             val (last, status) = scanPages(scrollToTop(img))
             last.release()
+            if (status == Scan.BLOCKED) {
+                totalDeleted += deleted
+                AppLog.i("Dừng lượt giữa chừng: đã xóa $deleted. Thử lại khi màn hình hết bị che.")
+                return false
+            }
             if (status != Scan.LOST) {
                 complete = true
                 break
@@ -186,7 +191,8 @@ class Bot(private val svc: BotService) {
         if (u != null && cpu { tabBrightness(img, u!!) } < LOCKED_BRIGHTNESS) {
             img.release()
             if (!svc.unlockGameBooster()) {
-                AppLog.i("Không mở được lớp khóa màn hình của Game Booster.")
+                AppLog.i("Không mở được lớp che tối màn hình. Nếu là \"Chống chạm nhầm\" của Samsung: đừng che cạnh trên " +
+                    "của máy (cảm biến tiệm cận), hoặc tắt nó trong Cài đặt > Màn hình.")
                 return null
             }
             img = shot()
@@ -220,6 +226,11 @@ class Bot(private val svc: BotService) {
         val u = ui!!
         var img = start
         for (page in 0 until 60) {
+            // Màn hình bị che tối giữa lượt (Game Booster khóa, "Chống chạm nhầm"...): mọi thao tác đều vô tác dụng.
+            if (cpu { tabBrightness(img, u) } < LOCKED_BRIGHTNESS) {
+                AppLog.i("Màn hình bị che tối giữa lượt (Game Booster khóa hoặc chống chạm nhầm).")
+                return img to Scan.BLOCKED
+            }
             val tasks = cpu { findTasks(img, u) }
             if (svc.prefs.saveImages) {
                 val marked = cpu { annotate(img, tasks, maxPoints, u) }
@@ -387,7 +398,7 @@ class Bot(private val svc: BotService) {
         }
         val btn = cpu { findDeleteButton(cur, u) }
         if (btn == null) {
-            AppLog.i("  Bỏ qua: khung chi tiết không có nút Xóa (có thể vừa có người nhận).")
+            AppLog.i("  Bỏ qua: khung chi tiết không có nút Xóa (vừa có người nhận, hoặc tài khoản không có chức năng xóa nhiệm vụ).")
             return false to cur
         }
         if (decide(panel, maxPoints) != Verdict.DELETE) {

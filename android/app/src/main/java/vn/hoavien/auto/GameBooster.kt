@@ -22,7 +22,7 @@ suspend fun BotService.brightness(img: Mat): Double? = withContext(Dispatchers.D
 /** Mở lớp khóa: chạm một lần cho ổ khóa hiện ra rồi kéo ổ khóa lên một đoạn.
  *  Lớp khóa chặn mọi thao tác chạm nên lần chạm này không tác động vào game. */
 suspend fun BotService.unlockGameBooster(): Boolean {
-    AppLog.i("Màn hình đang bị Game Booster khóa - mở khóa.")
+    AppLog.i("Màn hình đang bị che tối (Game Booster khóa?) - thử mở khóa.")
     for (attempt in 1..3) {
         val img = screenshot().img
         val w = img.cols()
