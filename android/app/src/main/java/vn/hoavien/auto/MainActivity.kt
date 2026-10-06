@@ -41,6 +41,9 @@ class MainActivity : Activity() {
         findViewById<View>(R.id.openAppInfo).setOnClickListener {
             startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)))
         }
+        bindNumber(R.id.maxPoints, prefs::maxPoints, 1..999)
+        bindNumber(R.id.intervalMin, prefs::intervalMin, 1..1440)
+        bindNumber(R.id.maxDeletes, prefs::maxDeletes, 0..999)
         bindNumber(R.id.dragDistance, prefs::dragDistance, 50..1200)
         bindNumber(R.id.dragMs, prefs::dragMs, 20..5000)
         bindNumber(R.id.holdMs, prefs::holdMs, 0..3000)
@@ -49,7 +52,7 @@ class MainActivity : Activity() {
             setOnCheckedChangeListener { _, checked -> prefs.saveImages = checked }
         }
         findViewById<TextView>(R.id.filesDir).text =
-            "Ảnh chụp và nhật ký lưu tại: ${getExternalFilesDir(null)} (thư mục debug/ và nhat_ky.txt)"
+            "Ảnh (tối đa 100 ảnh mới nhất) và nhật ký lưu tại: ${getExternalFilesDir(null)} (thư mục debug/ và nhat_ky.txt)"
         findViewById<View>(R.id.copyLog).setOnClickListener {
             getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("Nhật ký", AppLog.all()))
             Toast.makeText(this, "Đã sao chép nhật ký", Toast.LENGTH_SHORT).show()

@@ -17,6 +17,14 @@ import xoa_nhiem_vu as x  # noqa: E402
 OUT = HERE / "src/test/resources/ket_qua_python.tsv"
 
 
+def num(v):
+    return "-" if v is None else str(v)
+
+
+def pos(p):
+    return "none" if p is None else f"{p[0]},{p[1]}"
+
+
 def main():
     tpl = x.Templates()
     rows = []
@@ -32,7 +40,14 @@ def main():
             continue
         rows.append(["ui", rel, f"{ui.s:.6f}", f"{ui.dx:.1f}", f"{ui.dy:.1f}"])
         tasks = x.find_tasks(img, ui)
-        rows.append(["cards", rel, ";".join(f"{t.x},{t.y},{int(x.is_selected(img, t, ui))}" for t in tasks)])
+        rows.append(["tasks", rel, ";".join(
+            f"{t.x},{t.y},{int(x.is_selected(img, t, ui))},{num(t.reading.value)},{num(t.reading.low)},{num(t.reading.high)}"
+            for t in tasks)])
+        p = x.read_panel_points(img, ui)
+        rows.append(["panel", rel, num(p.value), num(p.low), num(p.high)])
+        rows.append(["delete", rel, pos(x.has_delete_button(img, ui))])
+        rows.append(["dialog", rel, pos(x.find_dialog_button(img, ui.btn_confirm, ui)),
+                     pos(x.find_dialog_button(img, ui.btn_cancel, ui))])
         rows.append(["attop", rel, str(int(x.at_top(img, ui)))])
         th, tw = ui.tab.shape[:2]
         tx, ty = ui.x(x.REF_TAB_POS[0]), ui.y(x.REF_TAB_POS[1])

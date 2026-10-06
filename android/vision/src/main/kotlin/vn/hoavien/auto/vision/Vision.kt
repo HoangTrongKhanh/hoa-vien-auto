@@ -19,7 +19,11 @@ const val REF_WIDTH = 1080
 const val REF_TAB_X = 160                   // góc trên-trái mẫu tab "Nhiệm Vụ" trên máy gốc
 const val REF_TAB_Y = 650
 val GRID = Box(100, 800, 980, 1632)         // vùng lưới ô nhiệm vụ nhìn thấy
+val PANEL = Box(90, 1700, 1000, 2010)       // khung chi tiết nhiệm vụ đang chọn
+val PANEL_POINTS = Box(90, 1700, 1000, 1900)        // dải chứa la bàn + điểm trong khung chi tiết
+val DELETE_BTN_REGION = Box(200, 1860, 560, 2010)
 val ACCEPT_BTN_ZONE = Box(560, 1860, 900, 2010)     // nút "Nhận nhiệm vụ" - không bao giờ bấm
+val DIALOG_REGION = Box(100, 1150, 1000, 1550)      // hộp thoại "Nhắc Nhở - Xác định xóa nhiệm vụ?"
 const val TOP_BADGE_X = 150                 // huy hiệu "1" của ô đầu tiên khi danh sách ở trên cùng
 const val TOP_BADGE_Y = 828
 // Khe trống giữa các cột (kéo ở đây không bị hiểu là chạm vào ô): cột 1|2 (x 384-408), cột 2|3 (x 673-691).
@@ -70,14 +74,38 @@ fun decodeImage(bytes: ByteArray): Mat {
     return img
 }
 
-class Templates(val tab: Mat, val compass: Mat, val badge1: Mat) {
+/** Mẫu chữ số: chữ số và mask nhị phân DIGIT_SIZE x DIGIT_SIZE (true = nét chữ). */
+class DigitTemplate(val digit: Int, val mask: BooleanArray)
+
+class Templates(
+    val tab: Mat, val compass: Mat, val badge1: Mat,
+    val btnDelete: Mat, val btnConfirm: Mat, val btnCancel: Mat,
+    val digits: List<DigitTemplate>,
+) {
     companion object {
-        /** read(tên file) trả về nội dung một ảnh mẫu trong thư mục templates/. */
-        fun load(read: (String) -> ByteArray) = Templates(
-            tab = decodeImage(read("tab_nhiem_vu.png")),
-            compass = decodeImage(read("compass.png")),
-            badge1 = decodeImage(read("badge_1.png")),
-        )
+        /** read(đường dẫn) trả về nội dung một file trong thư mục templates/, list(thư mục con) liệt kê tên file. */
+        fun load(read: (String) -> ByteArray, list: (String) -> List<String>): Templates {
+            val digits = list("digits").filter { it.endsWith(".png") }.sorted().map { name ->
+                val buf = MatOfByte(*read("digits/$name"))
+                val m = Imgcodecs.imdecode(buf, Imgcodecs.IMREAD_GRAYSCALE)
+                buf.release()
+                require(m.rows() == DIGIT_SIZE && m.cols() == DIGIT_SIZE) { "mẫu chữ số $name phải là ${DIGIT_SIZE}x$DIGIT_SIZE" }
+                val px = ByteArray(DIGIT_SIZE * DIGIT_SIZE)
+                m.get(0, 0, px)
+                m.release()
+                DigitTemplate(name[0].digitToInt(), BooleanArray(px.size) { (px[it].toInt() and 0xFF) > 127 })
+            }
+            require(digits.isNotEmpty()) { "thiếu mẫu chữ số trong templates/digits" }
+            return Templates(
+                tab = decodeImage(read("tab_nhiem_vu.png")),
+                compass = decodeImage(read("compass.png")),
+                badge1 = decodeImage(read("badge_1.png")),
+                btnDelete = decodeImage(read("btn_xoa.png")),
+                btnConfirm = decodeImage(read("btn_xac_nhan.png")),
+                btnCancel = decodeImage(read("btn_huy.png")),
+                digits = digits,
+            )
+        }
     }
 }
 
@@ -86,8 +114,15 @@ class Ui(base: Templates, val s: Double, val dx: Double = 0.0, val dy: Double = 
     val tab = scaled(base.tab)
     val compass = scaled(base.compass)
     val badge1 = scaled(base.badge1)
+    val btnDelete = scaled(base.btnDelete)
+    val btnConfirm = scaled(base.btnConfirm)
+    val btnCancel = scaled(base.btnCancel)
+    val digits = base.digits                    // chữ số đã chuẩn hoá kích thước, không cần co giãn
     val grid = box(GRID)
+    val panelPoints = box(PANEL_POINTS)
+    val deleteRegion = box(DELETE_BTN_REGION)
     val acceptZone = box(ACCEPT_BTN_ZONE)
+    val dialogRegion = box(DIALOG_REGION)
     val dragGaps = DRAG_GAPS.map { x(it) }
 
     private fun scaled(im: Mat): Mat {
@@ -217,19 +252,38 @@ fun matchBest(img: Mat, tpl: Mat, box: Box, s: Double = 1.0): Match {
 
 // ---------------------------------------------------------------- Nhận diện
 
-/** Ô nhiệm vụ còn trống (có la bàn). x, y: góc trên-trái icon la bàn; chạm vào giữa icon luôn trúng ô. */
-data class Card(val x: Int, val y: Int, val tapX: Int, val tapY: Int)
+/** Ô nhiệm vụ còn trống (có la bàn). x, y: góc trên-trái icon la bàn; chạm vào giữa icon luôn trúng ô
+ *  và luôn nằm trong khung nhìn. reading: số điểm đọc được bên phải la bàn. */
+data class Task(val x: Int, val y: Int, val reading: Reading, val tapX: Int, val tapY: Int)
 
 fun findCompasses(img: Mat, box: Box, ui: Ui) = findTemplate(img, ui.compass, box, ui.s, COMPASS_THRESHOLD, ui.d(20))
 
-/** Các ô nhiệm vụ còn trống nằm trọn trong khung nhìn của lưới. */
-fun findCards(img: Mat, ui: Ui): List<Card> {
+/** Vùng chứa số điểm nằm bên phải icon la bàn ở (x, y). */
+fun numberBoxRightOf(x: Int, y: Int, ui: Ui) = Box(x + ui.d(50), y - ui.d(6), x + ui.d(108), y + ui.d(54))
+
+/** Các ô nhiệm vụ còn trống nằm trọn trong khung nhìn của lưới, kèm số điểm. */
+fun findTasks(img: Mat, ui: Ui): List<Task> {
     val th = ui.compass.rows()
     val tw = ui.compass.cols()
     return findCompasses(img, ui.grid, ui)
         .filter { it.y - ui.d(6) >= ui.grid.y0 && it.y + th + ui.d(6) <= ui.grid.y1 }   // không bị khung nhìn cắt
-        .map { Card(it.x, it.y, it.x + tw / 2, it.y + th / 2) }
+        .map { Task(it.x, it.y, readNumber(img, numberBoxRightOf(it.x, it.y, ui), ui), it.x + tw / 2, it.y + th / 2) }
 }
+
+/** Điểm của nhiệm vụ đang chọn trong khung chi tiết. */
+fun readPanelPoints(img: Mat, ui: Ui): Reading {
+    val hit = findCompasses(img, ui.panelPoints, ui).minByOrNull { it.x }
+        ?: return Reading(null, null, null, "không thấy la bàn trong khung chi tiết")
+    return readNumber(img, numberBoxRightOf(hit.x, hit.y, ui), ui)
+}
+
+/** Tâm nút "Xóa nhiệm vụ" trong khung chi tiết, null nếu không có. */
+fun findDeleteButton(img: Mat, ui: Ui): Pair<Int, Int>? =
+    matchBest(img, ui.btnDelete, ui.deleteRegion, ui.s).takeIf { it.score >= BUTTON_THRESHOLD }?.let { it.x to it.y }
+
+/** Tâm nút Xác nhận/Hủy (tpl) của hộp thoại xóa, null nếu hộp thoại không hiện. */
+fun findDialogButton(img: Mat, tpl: Mat, ui: Ui): Pair<Int, Int>? =
+    matchBest(img, tpl, ui.dialogRegion, ui.s).takeIf { it.score >= BUTTON_THRESHOLD }?.let { it.x to it.y }
 
 /** Điểm ảnh BGR liên tiếp của vùng box (đã cắt theo ảnh), cùng chiều rộng vùng; null nếu vùng rỗng. */
 private fun pixels(img: Mat, box: Box): Pair<ByteArray, Int>? {
@@ -243,9 +297,9 @@ private fun pixels(img: Mat, box: Box): Pair<ByteArray, Int>? {
 }
 
 /** Ô có viền xanh lá (đang được chọn) không: xét viền trái và viền đáy quanh icon la bàn. */
-fun isSelected(img: Mat, card: Card, ui: Ui): Boolean {
-    val x = card.x
-    val y = card.y
+fun isSelected(img: Mat, task: Task, ui: Ui): Boolean {
+    val x = task.x
+    val y = task.y
     val regions = listOf(
         Box(x - ui.d(55), y - ui.d(40), x - ui.d(20), y + ui.d(40)),
         Box(x, y + ui.d(56), x + ui.d(60), y + ui.d(76)),

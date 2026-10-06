@@ -40,23 +40,73 @@
 
         <TextView
             style="@style/Header"
-            android:text="Cách thử" />
+            android:text="Cách dùng" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:lineSpacingExtra="2dp"
-            android:text="1. Bật Trợ năng ở trên. Bảng nổi hiện ở mép trên màn hình.\n2. Mở game, vào Đấu hội → bảng Nhiệm Vụ.\n3. Bấm lần lượt các nút trên bảng nổi, đợi mỗi bài chạy xong:\n   • Chụp – đo tốc độ chụp màn hình, nhận diện bảng.\n   • Chạm – chọn một ô nhiệm vụ (chỉ chọn, không xóa, không nhận).\n   • Kéo – cuộn danh sách một bước, đo độ cuộn. Bấm vài lần.\n   • Đầu – vuốt về đầu danh sách.\n   • Khóa – để yên máy chờ Game Booster khóa màn hình rồi thử mở khóa (tối đa 15 phút).\n   • ■ – dừng bài đang chạy. ≡ – kéo để dời bảng nổi, chạm để thu gọn.\n4. Quay lại đây, bấm Sao chép nhật ký và gửi lại."
+            android:text="1. Bật Trợ năng ở trên. Bảng nổi hiện ở mép trên màn hình khi rời màn hình này.\n2. Mở game, vào Đấu hội → bảng Nhiệm Vụ.\n3. Bấm trên bảng nổi:\n   • ▶ Chạy – quét cả danh sách, xóa nhiệm vụ điểm thấp, lặp lại theo chu kỳ bên dưới.\n   • Thử 1 lượt – quét 1 lượt, chỉ báo những nhiệm vụ sẽ xóa, không xóa thật.\n   • ■ – dừng.  ≡ – kéo để dời bảng nổi, chạm để thu gọn.\n   • ⋯ – các bài thử từng thao tác (dùng khi cài lên máy mới).\nTrong lúc chạy cứ để game ở bảng Nhiệm Vụ; bảng nổi giữ màn hình luôn sáng và tự mở khóa Game Booster."
             android:textSize="13sp" />
 
         <TextView
             style="@style/Header"
-            android:text="Thông số kéo" />
+            android:text="Cài đặt" />
+
+        <LinearLayout style="@style/Row">
+
+            <TextView
+                style="@style/Label"
+                android:text="Xóa nhiệm vụ có điểm ≤" />
+
+            <EditText
+                android:id="@+id/maxPoints"
+                style="@style/Number" />
+        </LinearLayout>
+
+        <LinearLayout style="@style/Row">
+
+            <TextView
+                style="@style/Label"
+                android:text="Quét lại sau (phút)" />
+
+            <EditText
+                android:id="@+id/intervalMin"
+                style="@style/Number" />
+        </LinearLayout>
+
+        <LinearLayout style="@style/Row">
+
+            <TextView
+                style="@style/Label"
+                android:text="Xóa tối đa mỗi lượt (0 = không giới hạn)" />
+
+            <EditText
+                android:id="@+id/maxDeletes"
+                style="@style/Number" />
+        </LinearLayout>
+
+        <CheckBox
+            android:id="@+id/saveImages"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Lưu ảnh đánh dấu để tra lỗi" />
+
+        <TextView
+            android:id="@+id/filesDir"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textIsSelectable="true"
+            android:textSize="12sp" />
+
+        <TextView
+            style="@style/Header"
+            android:text="Bài thử kéo (nút ⋯ → Kéo)" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Quãng kéo tính theo px của máy gốc rộng 1080, máy khác tự quy đổi. Nên kéo sao cho danh sách cuộn khoảng 520px."
+            android:text="Chỉ dùng cho bài thử Kéo. Quãng kéo tính theo px của máy gốc rộng 1080, máy khác tự quy đổi. Bot dùng kéo 548px, 500 ms, giữ 150 ms (danh sách cuộn ~520px)."
             android:textSize="13sp" />
 
         <LinearLayout style="@style/Row">
@@ -91,19 +141,6 @@
                 android:id="@+id/holdMs"
                 style="@style/Number" />
         </LinearLayout>
-
-        <CheckBox
-            android:id="@+id/saveImages"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Lưu ảnh chụp để phân tích" />
-
-        <TextView
-            android:id="@+id/filesDir"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textIsSelectable="true"
-            android:textSize="12sp" />
 
         <TextView
             style="@style/Header"

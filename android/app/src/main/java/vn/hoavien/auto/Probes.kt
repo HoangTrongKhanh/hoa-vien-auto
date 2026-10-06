@@ -1,75 +1,37 @@
 package vn.hoavien.auto
 
 import android.os.Build
-import android.os.Handler
-import android.os.Looper
 import android.os.SystemClock
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.opencv.core.Core
 import org.opencv.core.Mat
-import org.opencv.imgcodecs.Imgcodecs
 import vn.hoavien.auto.vision.SHIFT_MATCH_THRESHOLD
 import vn.hoavien.auto.vision.Shift
 import vn.hoavien.auto.vision.Ui
 import vn.hoavien.auto.vision.atTop
-import vn.hoavien.auto.vision.findCards
-import vn.hoavien.auto.vision.findLockIcon
+import vn.hoavien.auto.vision.findTasks
 import vn.hoavien.auto.vision.gridShift
 import vn.hoavien.auto.vision.gridUnchanged
 import vn.hoavien.auto.vision.isSelected
 import vn.hoavien.auto.vision.region
 import vn.hoavien.auto.vision.tabBrightness
-import java.io.File
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-private const val DRAG_FROM_Y = 1610            // điểm bắt đầu kéo (px máy gốc), như bản Python
 // Dải dùng để đo độ cuộn trong bài thử kéo: hẹp hơn bản chính (250) để đo được tới ~680px máy gốc,
 // vì chưa biết cử chỉ Trợ năng cuộn được bao xa.
 private const val PROBE_SHIFT_BAND = 150
 private const val SETTLE_TIMEOUT_MS = 4500L
 private const val LOCK_WATCH_MS = 15 * 60_000L
-private const val LOCKED_BRIGHTNESS = 0.35      // tab sáng ~1 bình thường, ~0.4 có hộp thoại, ~0.2-0.3 Game Booster khóa
-private val FILE_TIME = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")
 
-/** Các bài đo của bản thử. Mỗi bài trả lời một câu hỏi: điều khiển game bằng Trợ năng có thay được ADB không. */
+/** Các bài đo của bản thử (bảng nổi → ⋯): kiểm tra từng thao tác điều khiển game bằng Trợ năng trên máy mới. */
 class Probes(private val svc: BotService) {
-    private val prefs = Prefs(svc)
-    private val main = Handler(Looper.getMainLooper())
-    private var job: Job? = null
+    private val prefs = svc.prefs
     private var gap = 0                         // khe dùng cho lần kéo tới (đổi khe sau mỗi lần kéo)
 
-    /** Gọi trên luồng chính với tên bài đang chạy, null khi đã xong. */
-    var onStateChanged: (String?) -> Unit = {}
-
-    private fun start(name: String, block: suspend () -> Unit) {
-        if (job?.isActive == true) return
-        val j = svc.scope.launch {
-            AppLog.i("▶ $name")
-            try {
-                block()
-            } catch (e: CancellationException) {
-                AppLog.i("Đã dừng.")
-                throw e
-            } catch (e: Exception) {
-                AppLog.e("Lỗi: ${e.message ?: e}", e)
-            }
-        }
-        job = j
-        onStateChanged(name)
-        j.invokeOnCompletion { main.post { if (job === j) onStateChanged(null) } }
-    }
-
-    fun stop() {
-        job?.cancel()
-    }
+    private fun start(name: String, block: suspend () -> Unit) = svc.runJob(name, block)
 
     // ---------------------------------------------------------------- Tiện ích
 
@@ -106,16 +68,7 @@ class Probes(private val svc: BotService) {
         }
     }
 
-    /** Lưu ảnh vào files/debug/ (nếu bật trong màn hình chính) để phân tích sau bằng bản Python. */
-    private fun save(img: Mat, name: String) {
-        if (!prefs.saveImages) return
-        val copy = img.clone()
-        svc.scope.launch(Dispatchers.IO) {
-            val dir = File(svc.getExternalFilesDir(null), "debug").apply { mkdirs() }
-            Imgcodecs.imwrite(File(dir, "${LocalDateTime.now().format(FILE_TIME)}-$name.png").path, copy)
-            copy.release()
-        }
-    }
+    private fun save(img: Mat, name: String) = svc.saveImage(img, name)
 
     private fun refPx(ui: Ui, px: Int) = (px / ui.s).roundToInt()
 
@@ -145,7 +98,7 @@ class Probes(private val svc: BotService) {
         AppLog.i("Nhận diện bố cục (${now() - t1}ms): ${ui ?: "KHÔNG thấy bảng Nhiệm Vụ"}")
         if (ui != null) {
             val t2 = now()
-            val cards = cpu { findCards(last, ui) }
+            val cards = cpu { findTasks(last, ui) }
             val top = cpu { atTop(last, ui) }
             val bright = cpu { tabBrightness(last, ui) }
             AppLog.i("Tìm ô nhiệm vụ (${now() - t2}ms): ${cards.size} ô có la bàn; " +
@@ -185,7 +138,7 @@ class Probes(private val svc: BotService) {
     /** Chạm vào một ô nhiệm vụ (chỉ chọn ô, không xóa, không nhận) và chờ viền xanh hiện ra. */
     fun tapProbe() = start("Thử chạm chọn ô") {
         val (img, ui) = screenWithUi() ?: return@start
-        val cards = cpu { findCards(img, ui) }
+        val cards = cpu { findTasks(img, ui) }
         val card = cpu { cards.firstOrNull { !isSelected(img, it, ui) } }
         img.release()
         if (card == null) {
@@ -328,14 +281,11 @@ class Probes(private val svc: BotService) {
 
     // ---------------------------------------------------------------- 5. Game Booster
 
-    private fun lockedByWindow(windows: List<String>) = windows.any { it.contains("GameBooster", ignoreCase = true) }
-
-    /** Để yên máy chờ lớp khóa của Samsung Game Booster hiện ra, rồi thử mở bằng cử chỉ Trợ năng như bản Python.
+    /** Để yên máy chờ lớp khóa của Samsung Game Booster hiện ra, rồi thử mở bằng cử chỉ Trợ năng.
      *  Cũng kiểm tra bảng nổi có giữ được màn hình sáng không. */
     fun lockProbe() = start("Chờ Game Booster khóa màn hình") {
         AppLog.i("Để yên máy, không chạm vào màn hình. Theo dõi tối đa ${LOCK_WATCH_MS / 60_000} phút.")
         val t0 = now()
-        var lastWindows: List<String>? = null
         var lastAwake: Boolean? = null
         var lastMinute = 0L
         while (now() - t0 < LOCK_WATCH_MS) {
@@ -344,11 +294,6 @@ class Probes(private val svc: BotService) {
                 AppLog.i(if (awake) "  Màn hình đang sáng." else "  Màn hình đã TẮT dù bảng nổi đang giữ sáng.")
                 lastAwake = awake
             }
-            val windows = svc.windowSummary()
-            if (windows != lastWindows) {
-                AppLog.i("  Cửa sổ: ${windows.joinToString(" | ")}")
-                lastWindows = windows
-            }
             val img = try {
                 shot()
             } catch (e: ScreenshotFailed) {
@@ -356,16 +301,13 @@ class Probes(private val svc: BotService) {
                 delay(5000)
                 continue
             }
-            val ui = cpu { Ui.detect(img, svc.templates) }
-            val bright = ui?.let { cpu { tabBrightness(img, it) } }
-            val byWindow = lockedByWindow(windows)
-            val byImage = bright != null && bright < LOCKED_BRIGHTNESS
-            if (byWindow || byImage) {
-                AppLog.i("Phát hiện khóa sau ${(now() - t0) / 1000}s - theo cửa sổ: ${if (byWindow) "có" else "không"}, " +
-                    "theo độ sáng: ${if (byImage) "có" else "không"} (độ sáng tab ${"%.2f".format(bright ?: -1.0)}).")
+            val bright = svc.brightness(img)
+            if (bright != null && bright < LOCKED_BRIGHTNESS) {
+                AppLog.i("Phát hiện khóa sau ${(now() - t0) / 1000}s (độ sáng tab ${"%.2f".format(bright)}).")
                 save(img, "khoa-truoc")
                 img.release()
-                unlockGameBooster()
+                AppLog.i(if (svc.unlockGameBooster()) "→ ĐÃ MỞ KHÓA Game Booster bằng cử chỉ Trợ năng."
+                         else "→ KHÔNG mở được khóa bằng cử chỉ Trợ năng. Cách khác: tắt khóa tự động trong Game Booster.")
                 return@start
             }
             img.release()
@@ -377,43 +319,5 @@ class Probes(private val svc: BotService) {
             delay(5000)
         }
         AppLog.i("→ Sau ${LOCK_WATCH_MS / 60_000} phút màn hình không bị khóa.")
-    }
-
-    private suspend fun stillLocked(): Boolean {
-        val img = shot()
-        val ui = cpu { Ui.detect(img, svc.templates) }
-        val bright = ui?.let { cpu { tabBrightness(img, it) } }
-        save(img, "khoa-sau")
-        img.release()
-        return lockedByWindow(svc.windowSummary()) || (bright != null && bright < LOCKED_BRIGHTNESS)
-    }
-
-    /** Chạm một lần cho ổ khóa hiện ra rồi kéo ổ khóa lên một đoạn (lớp khóa chặn mọi thao tác chạm vào game). */
-    private suspend fun unlockGameBooster() {
-        for (attempt in 1..3) {
-            val img = shot()
-            val w = img.cols()
-            val h = img.rows()
-            var lock = cpu { findLockIcon(img) }
-            img.release()
-            if (lock == null) {
-                svc.tap(w / 2, h / 2)
-                delay(600)
-                val again = shot()
-                lock = cpu { findLockIcon(again) }
-                save(again, "khoa-sau-cham")
-                again.release()
-                AppLog.i("  Lần $attempt: chạm giữa màn hình → ${lock?.let { "thấy ổ khóa tại $it" } ?: "không thấy ổ khóa"}.")
-            }
-            val (x, y) = lock ?: (w / 2 to h / 2)
-            svc.swipe(x, y, x, y - h / 8, 400)
-            delay(800)
-            if (!stillLocked()) {
-                AppLog.i("→ ĐÃ MỞ KHÓA Game Booster bằng cử chỉ Trợ năng (lần $attempt).")
-                return
-            }
-            AppLog.i("  Lần $attempt: kéo ổ khóa xong vẫn còn khóa.")
-        }
-        AppLog.i("→ KHÔNG mở được khóa bằng cử chỉ Trợ năng. Cách khác: tắt khóa tự động trong Game Booster.")
     }
 }

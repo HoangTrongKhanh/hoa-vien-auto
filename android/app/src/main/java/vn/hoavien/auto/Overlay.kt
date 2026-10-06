@@ -22,7 +22,7 @@ private const val LOG_LINES = 4
 /** Bảng nổi gọn (1 hàng nút + vài dòng nhật ký) ở mép trên màn hình, nằm trên vùng tiêu đề của game để không che
  *  tab, lưới và khung chi tiết. Là cửa sổ Trợ năng nên không cần quyền "hiển thị trên ứng dụng khác".
  *  Giữ màn hình luôn sáng khi đang hiện (FLAG_KEEP_SCREEN_ON), thay cho "svc power stayon" của bản ADB. */
-class Overlay(private val svc: BotService, private val probes: Probes) {
+class Overlay(private val svc: BotService) {
     private val wm = svc.getSystemService(WindowManager::class.java)
     private val density = svc.resources.displayMetrics.density
     private val params = WindowManager.LayoutParams(
@@ -40,9 +40,12 @@ class Overlay(private val svc: BotService, private val probes: Probes) {
     private val root = LinearLayout(svc)
     private val handle = TextView(svc)
     private val logView = TextView(svc)
-    private val actions = mutableListOf<TextView>()
+    private val probeRow = LinearLayout(svc)
+    private val actions = mutableListOf<TextView>()     // các nút bắt đầu tác vụ: tắt khi đang chạy
+    private val extras = mutableListOf<View>()          // ẩn khi thu gọn
     private lateinit var stopButton: TextView
     private var collapsed = false
+    private var probesShown = false
     private val logListener: () -> Unit = {
         logView.text = AppLog.recent(6).joinToString("\n") { it.substringAfter(' ').trim() }   // bỏ giờ cho gọn
         logView.post { scrollLogToEnd() }
@@ -75,6 +78,22 @@ class Overlay(private val svc: BotService, private val probes: Probes) {
             setOnTouchListener(DragToMove())
         }
         row.addView(handle, margins())
+        val bot = svc.bot
+        actions += chip("▶ Chạy", 0xFF2E7D32.toInt()) {
+            svc.runJob("Chạy (mỗi ${svc.prefs.intervalMin} phút)") { bot.run(once = false, dryRun = false) }
+        }
+        actions += chip("Thử 1 lượt", 0xFF455A64.toInt()) {
+            svc.runJob("Chạy thử 1 lượt") { bot.run(once = true, dryRun = true) }
+        }
+        for (b in actions) row.addView(b, margins())
+        stopButton = chip("■", 0xFFC62828.toInt()) { svc.stopJob() }.also { row.addView(it, margins()) }
+        val more = chip("⋯", 0xFF455A64.toInt()) { setProbesShown(!probesShown) }.also { row.addView(it, margins()) }
+        extras += actions + stopButton + more
+        root.addView(row)
+
+        // Các bài thử từng thao tác (dùng khi cài lên máy mới), ẩn sau nút ⋯.
+        probeRow.orientation = LinearLayout.HORIZONTAL
+        val probes = svc.probes
         for ((label, action) in listOf(
             "Chụp" to probes::captureProbe,
             "Chạm" to probes::tapProbe,
@@ -82,10 +101,9 @@ class Overlay(private val svc: BotService, private val probes: Probes) {
             "Đầu" to probes::topProbe,
             "Khóa" to probes::lockProbe,
         )) {
-            actions += chip(label, 0xFF455A64.toInt()) { action() }.also { row.addView(it, margins()) }
+            actions += chip(label, 0xFF455A64.toInt()) { action() }.also { probeRow.addView(it, margins()) }
         }
-        stopButton = chip("■", 0xFFC62828.toInt()) { probes.stop() }.also { row.addView(it, margins()) }
-        root.addView(row)
+        root.addView(probeRow)
         logView.apply {
             textSize = 10f
             setTextColor(Color.WHITE)
@@ -96,8 +114,10 @@ class Overlay(private val svc: BotService, private val probes: Probes) {
         root.addView(logView, LinearLayout.LayoutParams(dp(300), LinearLayout.LayoutParams.WRAP_CONTENT).apply {
             setMargins(dp(1), dp(1), dp(1), dp(1))
         })
-        probes.onStateChanged = ::showState
+        extras += logView
+        svc.onJobChanged = ::showState
         showState(null)
+        setProbesShown(false)
     }
 
     private fun rounded(color: Int) = GradientDrawable().apply {
@@ -131,9 +151,13 @@ class Overlay(private val svc: BotService, private val probes: Probes) {
     private fun setCollapsed(c: Boolean) {
         collapsed = c
         val vis = if (c) View.GONE else View.VISIBLE
-        for (b in actions) b.visibility = vis
-        stopButton.visibility = vis
-        logView.visibility = vis
+        for (v in extras) v.visibility = vis
+        probeRow.visibility = if (c || !probesShown) View.GONE else View.VISIBLE
+    }
+
+    private fun setProbesShown(shown: Boolean) {
+        probesShown = shown
+        probeRow.visibility = if (collapsed || !shown) View.GONE else View.VISIBLE
     }
 
     fun show() {

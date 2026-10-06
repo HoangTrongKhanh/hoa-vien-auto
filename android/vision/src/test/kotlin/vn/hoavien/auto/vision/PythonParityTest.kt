@@ -21,7 +21,10 @@ class PythonParityTest {
 
     init {
         OpenCV.loadLocally()
-        templates = Templates.load { File(root, "templates/$it").readBytes() }
+        templates = Templates.load(
+            read = { File(root, "templates/$it").readBytes() },
+            list = { File(root, "templates/$it").list()!!.toList() },
+        )
         expected = javaClass.getResource("/ket_qua_python.tsv")!!.readText().lines()
             .filter { it.isNotBlank() }.map { it.split("\t") }
     }
@@ -47,20 +50,58 @@ class PythonParityTest {
         }
     }
 
+    private fun num(s: String) = if (s == "-") null else s.toInt()
+
+    private fun assertReading(want: List<String>, got: Reading, msg: String) =
+        assertEquals(want.map(::num), listOf(got.value, got.low, got.high), "$msg [${got.detail}]")
+
+    private fun pos(s: String) = if (s == "none") null else s.split(",").map(String::toInt).let { it[0] to it[1] }
+
+    private fun assertNear(want: Pair<Int, Int>?, got: Pair<Int, Int>?, msg: String) {
+        if (want == null || got == null) return assertEquals(want, got, msg)
+        assertTrue(abs(want.first - got.first) <= 1 && abs(want.second - got.second) <= 1, "$msg: $want != $got")
+    }
+
     @Test
-    fun cardsAndSelection() {
-        for (r in rows("cards")) {
+    fun tasksReadingsAndSelection() {
+        var readings = 0
+        for (r in rows("tasks")) {
             val img = image(r[1])
             val ui = uiOf(r[1])
-            val want = r.getOrElse(2) { "" }.split(";").filter { it.isNotEmpty() }.map { c ->
-                c.split(",").map(String::toInt)
-            }
-            val got = findCards(img, ui)
+            val want = r.getOrElse(2) { "" }.split(";").filter { it.isNotEmpty() }.map { it.split(",") }
+            val got = findTasks(img, ui)
             assertEquals(want.size, got.size, "${r[1]}: số ô có la bàn (Python ${want.map { it.take(2) }}, Kotlin ${got.map { it.x to it.y }})")
             for ((w, g) in want.zip(got)) {
-                assertTrue(abs(w[0] - g.x) <= 1 && abs(w[1] - g.y) <= 1, "${r[1]}: vị trí ô ${w.take(2)} != (${g.x},${g.y})")
-                assertEquals(w[2] == 1, isSelected(img, g, ui), "${r[1]}: ô (${g.x},${g.y}) đang chọn")
+                assertTrue(abs(w[0].toInt() - g.x) <= 1 && abs(w[1].toInt() - g.y) <= 1, "${r[1]}: vị trí ô ${w.take(2)} != (${g.x},${g.y})")
+                assertEquals(w[2] == "1", isSelected(img, g, ui), "${r[1]}: ô (${g.x},${g.y}) đang chọn")
+                assertReading(w.subList(3, 6), g.reading, "${r[1]}: điểm ô (${g.x},${g.y})")
+                readings++
             }
+        }
+        println("Đã so $readings ô nhiệm vụ")
+    }
+
+    @Test
+    fun panelAndButtons() {
+        for (r in rows("panel")) assertReading(r.subList(2, 5), readPanelPoints(image(r[1]), uiOf(r[1])), "${r[1]}: khung chi tiết")
+        for (r in rows("delete")) assertNear(pos(r[2]), findDeleteButton(image(r[1]), uiOf(r[1])), "${r[1]}: nút Xóa")
+        for (r in rows("dialog")) {
+            val ui = uiOf(r[1])
+            assertNear(pos(r[2]), findDialogButton(image(r[1]), ui.btnConfirm, ui), "${r[1]}: nút Xác nhận")
+            assertNear(pos(r[3]), findDialogButton(image(r[1]), ui.btnCancel, ui), "${r[1]}: nút Hủy")
+        }
+    }
+
+    /** Nhãn do người xem ảnh ghi tay (samples/labels.txt: ảnh, x, y gần ô, điểm đúng). */
+    @Test
+    fun handLabels() {
+        for (line in File(root, "samples/labels.txt").readLines().filter { it.isNotBlank() }) {
+            val (rel, xs, ys, value) = line.split(" ")
+            val img = image(rel)
+            val ui = uiOf(rel)
+            val t = findTasks(img, ui).minByOrNull { abs(it.x - xs.toInt()) + abs(it.y - ys.toInt()) }
+            assertNotNull(t, "$rel: không thấy ô gần ($xs,$ys)")
+            assertEquals(value.toInt(), t.reading.value, "$rel: ô gần ($xs,$ys) [${t.reading.detail}]")
         }
     }
 

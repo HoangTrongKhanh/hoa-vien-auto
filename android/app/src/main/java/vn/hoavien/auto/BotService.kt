@@ -6,24 +6,35 @@ import android.accessibilityservice.GestureDescription.StrokeDescription
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Path
+import android.os.Handler
+import android.os.Looper
 import android.os.PowerManager
 import android.os.SystemClock
 import android.view.Display
 import android.view.accessibility.AccessibilityEvent
-import android.view.accessibility.AccessibilityWindowInfo
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import org.opencv.android.Utils
 import org.opencv.core.Mat
+import org.opencv.imgcodecs.Imgcodecs
 import org.opencv.imgproc.Imgproc
 import vn.hoavien.auto.vision.Templates
+import java.io.File
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.util.concurrent.Executors
 import kotlin.coroutines.resume
+
+private const val MAX_DEBUG_IMAGES = 100       // ~3MB/ảnh trên máy 1600x2560
+private val FILE_TIME = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss-SSS")
 
 class ScreenshotFailed(val code: Int) : RuntimeException("chụp màn hình lỗi (mã $code)")
 
@@ -42,17 +53,69 @@ class BotService : AccessibilityService() {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     lateinit var templates: Templates
         private set
-    private lateinit var probes: Probes
+    lateinit var prefs: Prefs
+        private set
+    lateinit var bot: Bot
+        private set
+    lateinit var probes: Probes
+        private set
     private var overlay: Overlay? = null
     private val shotExecutor = Executors.newSingleThreadExecutor()
     private var lastShotAt = 0L
+    private val main = Handler(Looper.getMainLooper())
+    private var job: Job? = null
+
+    /** Gọi trên luồng chính với tên tác vụ đang chạy (bot hoặc bài thử), null khi rảnh. */
+    var onJobChanged: (String?) -> Unit = {}
 
     override fun onServiceConnected() {
-        templates = Templates.load { name -> assets.open(name).use { it.readBytes() } }
+        templates = Templates.load(
+            read = { name -> assets.open(name).use { it.readBytes() } },
+            list = { dir -> assets.list(dir).orEmpty().toList() },
+        )
+        prefs = Prefs(this)
+        bot = Bot(this)
         probes = Probes(this)
-        overlay = Overlay(this, probes).also { it.show() }
+        overlay = Overlay(this).also { it.show() }
         instance = this
-        AppLog.i("Đã bật dịch vụ Trợ năng. Mở game ở bảng Nhiệm Vụ rồi dùng bảng nổi.")
+        AppLog.i("Đã bật dịch vụ Trợ năng. Mở game ở bảng Nhiệm Vụ rồi bấm ▶ trên bảng nổi.")
+    }
+
+    // ---------------------------------------------------------------- Tác vụ
+
+    /** Chạy một tác vụ (bot hoặc bài thử); mỗi lúc chỉ một tác vụ. */
+    fun runJob(name: String, block: suspend () -> Unit) {
+        if (job?.isActive == true) return
+        val j = scope.launch {
+            AppLog.i("▶ $name")
+            try {
+                block()
+            } catch (e: CancellationException) {
+                AppLog.i("Đã dừng.")
+                throw e
+            } catch (e: Exception) {
+                AppLog.e("Lỗi: ${e.message ?: e}", e)
+            }
+        }
+        job = j
+        onJobChanged(name)
+        j.invokeOnCompletion { main.post { if (job === j) onJobChanged(null) } }
+    }
+
+    fun stopJob() {
+        job?.cancel()
+    }
+
+    /** Lưu ảnh vào files/debug/ (nếu bật trong màn hình chính) để tra lỗi; giữ tối đa MAX_DEBUG_IMAGES ảnh mới nhất. */
+    fun saveImage(img: Mat, name: String) {
+        if (!prefs.saveImages) return
+        val copy = img.clone()
+        scope.launch(Dispatchers.IO) {
+            val dir = File(getExternalFilesDir(null), "debug").apply { mkdirs() }
+            Imgcodecs.imwrite(File(dir, "${LocalDateTime.now().format(FILE_TIME)}-$name.png").path, copy)
+            copy.release()
+            dir.listFiles()?.sortedByDescending { it.name }?.drop(MAX_DEBUG_IMAGES)?.forEach { it.delete() }
+        }
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
@@ -185,20 +248,4 @@ class BotService : AccessibilityService() {
     // ---------------------------------------------------------------- Trạng thái máy
 
     fun screenOn() = getSystemService(PowerManager::class.java).isInteractive
-
-    /** Các cửa sổ đang hiện (loại:tiêu đề), dùng để nhận ra lớp khóa của Game Booster. */
-    fun windowSummary(): List<String> = try {
-        windows.map { w ->
-            val type = when (w.type) {
-                AccessibilityWindowInfo.TYPE_APPLICATION -> "ứng dụng"
-                AccessibilityWindowInfo.TYPE_SYSTEM -> "hệ thống"
-                AccessibilityWindowInfo.TYPE_INPUT_METHOD -> "bàn phím"
-                AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY -> "trợ năng"
-                else -> "loại ${w.type}"
-            }
-            "$type:${w.title ?: "?"}"
-        }
-    } catch (e: RuntimeException) {
-        listOf("lỗi đọc cửa sổ: ${e.message}")
-    }
 }
