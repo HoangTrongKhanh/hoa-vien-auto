@@ -12,11 +12,11 @@ import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.widget.LinearLayout
 import android.widget.TextView
+import vn.hoavien.auto.vision.Box
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-/** Màu đặc của nút ≡ trên bảng nổi; bài đo chụp màn hình dò màu này để biết bảng nổi có lọt vào ảnh chụp không. */
-const val OVERLAY_MARKER_COLOR = 0xFF37474F.toInt()
+private const val HANDLE_COLOR = 0xFF37474F.toInt()
 private const val LOG_LINES = 4
 
 /** Bảng nổi gọn (1 hàng nút + vài dòng nhật ký) ở mép trên màn hình, nằm trên vùng tiêu đề của game để không che
@@ -70,7 +70,7 @@ class Overlay(private val svc: BotService, private val probes: Probes) {
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
-            background = rounded(OVERLAY_MARKER_COLOR)
+            background = rounded(HANDLE_COLOR)
             setPadding(dp(10), dp(5), dp(10), dp(5))
             setOnTouchListener(DragToMove())
         }
@@ -151,11 +151,12 @@ class Overlay(private val svc: BotService, private val probes: Probes) {
         runCatching { wm.removeView(root) }
     }
 
-    fun markerOnScreen(): Pair<Int, Int>? {
-        if (!handle.isAttachedToWindow || handle.height == 0) return null
+    /** Vùng nút ≡ trên màn hình (null nếu bảng nổi chưa hiện). */
+    fun handleOnScreen(): Box? {
+        if (!handle.isAttachedToWindow || handle.height == 0 || root.visibility != View.VISIBLE) return null
         val loc = IntArray(2)
         handle.getLocationOnScreen(loc)
-        return loc[0] + dp(3) to loc[1] + handle.height / 2     // mép trái nút ≡: chỉ có màu nền, không có chữ
+        return Box(loc[0], loc[1], loc[0] + handle.width, loc[1] + handle.height)
     }
 
     /** Kéo nút ≡ để di chuyển bảng nổi; chạm (không kéo) để thu gọn/mở rộng. */

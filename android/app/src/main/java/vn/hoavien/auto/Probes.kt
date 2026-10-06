@@ -10,6 +10,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.opencv.core.Core
 import org.opencv.core.Mat
 import org.opencv.imgcodecs.Imgcodecs
 import vn.hoavien.auto.vision.SHIFT_MATCH_THRESHOLD
@@ -21,6 +22,7 @@ import vn.hoavien.auto.vision.findLockIcon
 import vn.hoavien.auto.vision.gridShift
 import vn.hoavien.auto.vision.gridUnchanged
 import vn.hoavien.auto.vision.isSelected
+import vn.hoavien.auto.vision.region
 import vn.hoavien.auto.vision.tabBrightness
 import java.io.File
 import java.time.LocalDateTime
@@ -35,7 +37,6 @@ private const val PROBE_SHIFT_BAND = 150
 private const val SETTLE_TIMEOUT_MS = 4500L
 private const val LOCK_WATCH_MS = 15 * 60_000L
 private const val LOCKED_BRIGHTNESS = 0.35      // tab sáng ~1 bình thường, ~0.4 có hộp thoại, ~0.2-0.3 Game Booster khóa
-private const val OVERLAY_COLOR_TOLERANCE = 12
 private val FILE_TIME = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")
 
 /** Các bài đo của bản thử. Mỗi bài trả lời một câu hỏi: điều khiển game bằng Trợ năng có thay được ADB không. */
@@ -150,18 +151,33 @@ class Probes(private val svc: BotService) {
             AppLog.i("Tìm ô nhiệm vụ (${now() - t2}ms): ${cards.size} ô có la bàn; " +
                 "đang ở đầu danh sách: ${if (top) "có" else "không"}; độ sáng tab ${"%.2f".format(bright)}.")
         }
-        val marker = svc.overlayMarker()
-        if (marker != null) {
-            val (x, y) = marker
-            val px = last.get(y, x)                 // B, G, R
-            val want = intArrayOf(OVERLAY_MARKER_COLOR and 0xFF, (OVERLAY_MARKER_COLOR shr 8) and 0xFF,
-                (OVERLAY_MARKER_COLOR shr 16) and 0xFF)
-            val inShot = px != null && px.indices.all { abs(px[it] - want[it]) <= OVERLAY_COLOR_TOLERANCE }
-            AppLog.i(if (inShot) "Bảng nổi CÓ lọt vào ảnh chụp: phải đặt bảng nổi ngoài vùng tab, lưới và khung chi tiết."
-                     else "Bảng nổi KHÔNG lọt vào ảnh chụp.")
-        }
         save(last, "chup")
         last.release()
+        overlayInShotCheck()
+    }
+
+    /** Chụp khi ẩn rồi khi hiện bảng nổi, so vùng nút ≡ giữa 2 ảnh. (Không so màu cố định được: máy Samsung vẽ
+     *  bảng nổi hơi trong suốt nên màu trong ảnh bị trộn với game phía sau.) */
+    private suspend fun overlayInShotCheck() {
+        val box = svc.overlayHandle() ?: return
+        svc.setOverlayVisible(false)
+        val hidden = try {
+            delay(200)
+            shot()
+        } finally {
+            svc.setOverlayVisible(true)
+        }
+        delay(200)
+        val shown = shot()
+        val diff = cpu {
+            val d = Mat()
+            hidden.region(box) { a -> shown.region(box) { b -> Core.absdiff(a, b, d) } }
+            Core.mean(d).`val`.take(3).average().also { d.release() }
+        }
+        hidden.release()
+        shown.release()
+        AppLog.i(if (diff > 8) "Bảng nổi CÓ lọt vào ảnh chụp (chênh ${"%.0f".format(diff)}): phải đặt bảng nổi ngoài vùng tab, lưới và khung chi tiết."
+                 else "Bảng nổi KHÔNG lọt vào ảnh chụp (chênh ${"%.0f".format(diff)}).")
     }
 
     // ---------------------------------------------------------------- 2. Chạm

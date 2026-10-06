@@ -84,8 +84,8 @@ class BotService : AccessibilityService() {
         overlay?.setVisible(visible)
     }
 
-    /** Điểm trên màn hình mà bảng nổi tô màu đặc OVERLAY_MARKER_COLOR (để biết bảng nổi có lọt vào ảnh chụp). */
-    fun overlayMarker(): Pair<Int, Int>? = overlay?.markerOnScreen()
+    /** Vùng nút ≡ của bảng nổi trên màn hình, để kiểm tra bảng nổi có lọt vào ảnh chụp không. */
+    fun overlayHandle() = overlay?.handleOnScreen()
 
     // ---------------------------------------------------------------- Chụp màn hình
 
