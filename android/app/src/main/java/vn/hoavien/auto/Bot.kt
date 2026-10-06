@@ -38,8 +38,11 @@ private const val EXPECTED_SHIFT = 520
 // Sau mỗi lần bấm không chờ cố định mà chụp lặp lại tới khi giao diện đổi xong (mỗi lần chụp ~0.33s).
 private const val POLL_FIRST_WAIT = 150L    // chờ trước lần chụp đầu để game kịp phản hồi
 private const val SELECT_TIMEOUT = 1200L    // chọn ô: khung chi tiết hiện đúng ô vừa bấm
-private const val DIALOG_TIMEOUT = 2000L    // bấm Xóa: hộp thoại xác nhận hiện ra
+private const val DIALOG_TIMEOUT = 4000L    // bấm Xóa: hộp thoại xác nhận hiện xong (đôi khi hiện chậm)
 private const val DELETED_TIMEOUT = 2500L   // bấm Xác nhận: ô chuyển thành đồng hồ
+private const val CONFIRM_TAPS = 3          // bấm Xác nhận mà hộp thoại vẫn còn thì bấm lại, tối đa bấy nhiêu lần
+// Hộp thoại xóa làm tối nền (độ sáng tab ~0.4), kể cả lúc đang hiện dở khi chưa nhận ra được nút nào.
+private const val NO_DIALOG_BRIGHTNESS = 0.85
 private const val SCROLL_WAIT = 50L         // kéo có dừng trước khi nhả nên danh sách đứng yên ngay
 private const val SETTLE_TIMEOUT = 4500L    // ở cuối danh sách: chờ hiệu ứng nảy đàn hồi kết thúc
 private const val TOP_TIMEOUT = 2000L       // vuốt lên đầu: chờ danh sách dừng ở trên cùng
@@ -82,6 +85,23 @@ class Bot(private val svc: BotService) {
             val img = shot()
             val result = cpu { check(img) }
             if (result != null || now() >= deadline) return img to result
+            img.release()
+        }
+    }
+
+    /** Như poll nhưng chỉ nhận kết quả khi 2 lần chụp liên tiếp cho kết quả giống nhau (same): giao diện đã
+     *  hiện xong, không còn đang chạy hiệu ứng. */
+    private suspend fun <T : Any> pollStable(timeoutMs: Long, same: (T, T) -> Boolean = { a, b -> a == b },
+                                             check: (Mat) -> T?): Pair<Mat, T?> {
+        delay(POLL_FIRST_WAIT)
+        val deadline = now() + timeoutMs
+        var prev: T? = null
+        while (true) {
+            val img = shot()
+            val result = cpu { check(img) }
+            if (result != null && prev != null && same(prev, result)) return img to result
+            if (now() >= deadline) return img to null
+            prev = result
             img.release()
         }
     }
@@ -328,11 +348,15 @@ class Bot(private val svc: BotService) {
     private suspend fun deleteTask(task: Task): Pair<Boolean, Mat> {
         val u = ui!!
 
+        // Ô đã thành đồng hồ: không còn la bàn ở chỗ cũ, và không có hộp thoại nào (kể cả hộp thoại đang hiện dở:
+        // lúc đó nó đã che mất la bàn nhưng chưa nhận ra được nút Hủy, chỉ thấy nền bị làm tối).
         fun cardGone(im: Mat): Boolean {
             val tol = u.d(15)
-            return findDialogButton(im, u.btnCancel, u) == null &&
+            return tabBrightness(im, u) >= NO_DIALOG_BRIGHTNESS && findDialogButton(im, u.btnCancel, u) == null &&
                 findCompasses(im, u.grid, u).none { abs(it.x - task.x) < tol && abs(it.y - task.y) < tol }
         }
+
+        fun samePos(a: Pair<Int, Int>, b: Pair<Int, Int>) = abs(a.first - b.first) <= 3 && abs(a.second - b.second) <= 3
 
         var img: Mat? = null
         var panel: Reading? = null
@@ -368,24 +392,40 @@ class Bot(private val svc: BotService) {
         }
         tap(btn.first, btn.second)
         cur.release()
-        val (afterDelete, step) = poll(DIALOG_TIMEOUT) { im ->
+        // Chờ hộp thoại hiện xong (nút Xác nhận đứng yên ở 2 ảnh liên tiếp), hoặc ô mất hẳn khi không có hộp thoại
+        // (đã tick "Hôm nay không nhắc nữa").
+        val (afterDelete, step) = pollStable(DIALOG_TIMEOUT, { a, b ->
+            a.first == b.first && (a.second == null || samePos(a.second!!, b.second!!))
+        }) { im ->
             findDialogButton(im, u.btnConfirm, u)?.let { "confirm" to it }
-                ?: if (cardGone(im)) ("gone" to null) else null    // không có hộp thoại: đã tick "Hôm nay không nhắc nữa"
+                ?: if (cardGone(im)) ("gone" to null) else null
         }
         var latest = afterDelete
-        val gone = if (step?.first == "confirm") {
-            val (x, y) = step.second!!
-            tap(x, y)
+        var gone = step?.first == "gone"
+        var confirm = step?.second
+        var taps = 0
+        while (!gone && confirm != null && taps < CONFIRM_TAPS) {
+            tap(confirm.first, confirm.second)
+            taps++
             latest.release()
-            val (im, g) = poll(DELETED_TIMEOUT) { im -> if (cardGone(im)) true else null }
+            val (im, g) = pollStable(DELETED_TIMEOUT) { im -> if (cardGone(im)) true else null }
             latest = im
-            g == true
-        } else {
-            step != null
+            gone = g == true
+            if (!gone) {
+                confirm = cpu { findDialogButton(latest, u.btnConfirm, u) }
+                if (confirm != null) AppLog.i("  Bấm Xác nhận lần $taps mà hộp thoại vẫn còn - bấm lại.")
+            }
         }
         if (!gone) {
-            AppLog.i("  Đã bấm Xóa${if (step != null) " + Xác nhận" else ""} nhưng ô vẫn còn nhiệm vụ.")
+            AppLog.i("  Đã bấm Xóa${if (taps > 0) " + Xác nhận ($taps lần)" else ""} nhưng ô vẫn còn nhiệm vụ.")
             svc.saveImage(latest, "xoa-khong-thanh-cong")
+            // Đóng hộp thoại còn mở (nếu có) để không chặn các thao tác sau.
+            val cancel = cpu { findDialogButton(latest, u.btnCancel, u) }
+            if (cancel != null) {
+                tap(cancel.first, cancel.second)
+                latest.release()
+                latest = poll(DIALOG_TIMEOUT) { im -> if (findDialogButton(im, u.btnCancel, u) == null) true else null }.first
+            }
             return false to latest
         }
         AppLog.i("  Đã xóa nhiệm vụ ${panel.value} điểm.")
