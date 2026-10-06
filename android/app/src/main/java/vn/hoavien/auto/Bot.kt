@@ -45,6 +45,10 @@ private const val CONFIRM_TAPS = 3          // bấm Xác nhận mà hộp tho�
 // Hộp thoại xóa làm tối nền (độ sáng tab ~0.4), kể cả lúc đang hiện dở khi chưa nhận ra được nút nào.
 private const val NO_DIALOG_BRIGHTNESS = 0.85
 private const val SCROLL_WAIT = 50L         // kéo có dừng trước khi nhả nên danh sách đứng yên ngay
+// Kéo mà danh sách không cuộn chưa chắc đã tới cuối: game nạp dần các ô, có lúc danh sách tạm cụt (ví dụ dừng ở ô 27
+// trong khi có 66 ô) rồi mới hiện tiếp. Chỉ coi là hết khi kéo bấy nhiêu lần, cách nhau END_RETRY_WAIT, đều không cuộn.
+private const val END_CONFIRM_DRAGS = 3
+private const val END_RETRY_WAIT = 1000L
 private const val SETTLE_TIMEOUT = 4500L    // ở cuối danh sách: chờ hiệu ứng nảy đàn hồi kết thúc
 private const val TOP_TIMEOUT = 2000L       // vuốt lên đầu: chờ danh sách dừng ở trên cùng
 private const val NOT_READY_RETRY = 20_000L // chưa thấy bảng Nhiệm Vụ: thử lại sau bấy nhiêu ms
@@ -303,21 +307,22 @@ class Bot(private val svc: BotService) {
     private suspend fun scrollDown(img: Mat): Pair<Mat, Scan> {
         val u = ui!!
         var settled: Mat? = null
-        for (attempt in u.dragGaps.indices) {
+        for (attempt in 0 until END_CONFIRM_DRAGS) {
             val g = (gap + attempt) % u.dragGaps.size
+            if (attempt > 0) delay(END_RETRY_WAIT)  // cho game kịp nạp thêm ô
             svc.drag(u.dragGaps[g], u.y(DRAG_FROM_Y), u.y(DRAG_FROM_Y - DRAG_DISTANCE), DRAG_MOVE_MS, DRAG_HOLD_MS)
             delay(SCROLL_WAIT)
             val first = shot()
             val moved = !cpu { gridUnchanged(img, first, u) }
             val still = if (moved) waitStill(first).also { first.release() } else first
             if (!cpu { gridUnchanged(img, still, u) }) {
-                if (g != gap) AppLog.i("  Khe x=${u.dragGaps[gap]} không kéo được, đã dùng khe x=${u.dragGaps[g]}.")
+                if (attempt > 0) AppLog.i("  Kéo $attempt lần không cuộn, lần ${attempt + 1} (khe x=${u.dragGaps[g]}) thì cuộn được.")
                 gap = (g + 1) % u.dragGaps.size       // lần kéo sau dùng khe còn lại
                 settled = still
                 break
             }
-            // Nhúc nhích rồi nảy về đúng chỗ cũ: đã ở cuối. Kéo ở cả 2 khe vẫn đứng yên: cũng là cuối.
-            if (moved || attempt == u.dragGaps.size - 1) {
+            // Đứng yên hoặc nhúc nhích rồi nảy về đúng chỗ cũ: có thể đã ở cuối, kéo lại cho chắc.
+            if (attempt == END_CONFIRM_DRAGS - 1) {
                 img.release()
                 return still to Scan.END
             }
