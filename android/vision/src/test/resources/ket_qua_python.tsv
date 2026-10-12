@@ -18,6 +18,16 @@ badges	samples/fused/tab_21_anh_danh_dau.png	228,856,31;650,856,32;1072,856,33;2
 tasknum	samples/fused/tab_21_anh_danh_dau.png	35
 attop	samples/fused/tab_21_anh_danh_dau.png	0
 bright	samples/fused/tab_21_anh_danh_dau.png	0.9895
+lock	samples/khong_khop/so_thu_hai_khac.png	457,1324
+ui	samples/khong_khop/so_thu_hai_khac.png	1.000000	0.0	0.0
+tasks	samples/khong_khop/so_thu_hai_khac.png	444,995,0,14,14,14;159,1261,1,-,-,-;156,1528,0,28,28,28;443,1528,0,28,28,28
+panel	samples/khong_khop/so_thu_hai_khac.png	12	12	12
+delete	samples/khong_khop/so_thu_hai_khac.png	370,1935
+dialog	samples/khong_khop/so_thu_hai_khac.png	none	none
+badges	samples/khong_khop/so_thu_hai_khac.png	151,828,1;438,828,2;725,828,3;151,1095,4;438,1095,5;725,1095,6;151,1361,7;438,1361,8;725,1361,9
+tasknum	samples/khong_khop/so_thu_hai_khac.png	2;4;7;8
+attop	samples/khong_khop/so_thu_hai_khac.png	1
+bright	samples/khong_khop/so_thu_hai_khac.png	1.0000
 lock	samples/lock/after_tap.png	799,1343
 ui	samples/lock/after_tap.png	1.481481	2.0	-448.0
 tasks	samples/lock/after_tap.png	1077,1847,0,-,-,-

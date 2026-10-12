@@ -29,6 +29,18 @@ fun decide(r: Reading, maxPoints: Int): Verdict = when {
     else -> Verdict.UNSURE
 }
 
+/** Gộp 2 lần đọc số điểm của cùng một ô (cạnh la bàn và cạnh kim cương). Chỉ tin khi cả 2 đọc được và cách đọc
+ *  giống nhất trùng nhau. Khoảng khả dĩ lấy hợp của 2 khoảng, nên kết quả không bao giờ chắc chắn hơn từng lần đọc. */
+fun crossCheck(first: Reading, second: Reading): Reading = when {
+    first.value == null -> first
+    second.value == null ->
+        Reading(null, null, null, "${first.value} [${first.detail}], số cạnh kim cương không đọc được [${second.detail}]")
+    first.value != second.value ->
+        Reading(null, null, null, "2 số không khớp: ${first.value} [${first.detail}] / ${second.value} [${second.detail}]")
+    else -> Reading(first.value, minOf(first.low!!, second.low!!), maxOf(first.high!!, second.high!!),
+        "${first.detail} / ${second.detail}")
+}
+
 /** Phân vị kiểu numpy.percentile (nội suy tuyến tính) của mảng đã sắp xếp. */
 internal fun percentile(sorted: FloatArray, q: Double): Double {
     val pos = q / 100 * (sorted.size - 1)

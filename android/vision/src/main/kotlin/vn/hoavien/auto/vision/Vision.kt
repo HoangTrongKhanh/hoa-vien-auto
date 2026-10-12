@@ -34,6 +34,9 @@ const val SHIFT_SCALE = 0.25
 const val SHIFT_MATCH_THRESHOLD = 0.85
 // Tìm mẫu trên ảnh thu nhỏ về MATCH_SCALE rồi tinh chỉnh ở độ phân giải gốc: nhanh hơn ~7 lần.
 const val MATCH_SCALE = 0.5
+// Mỗi ô ghi số điểm 2 lần: bên phải la bàn và bên phải viên kim cương (lệch thêm bấy nhiêu px máy gốc). Hai số này
+// luôn bằng nhau (đã kiểm trên mọi ảnh mẫu), nên đọc cả hai để tự kiểm tra.
+const val SECOND_NUMBER_DX = 100
 const val COMPASS_THRESHOLD = 0.80
 const val BUTTON_THRESHOLD = 0.80
 
@@ -274,13 +277,14 @@ fun matchBest(img: Mat, tpl: Mat, box: Box, s: Double = 1.0): Match {
 // ---------------------------------------------------------------- Nhận diện
 
 /** Ô nhiệm vụ còn trống (có la bàn). x, y: góc trên-trái icon la bàn; chạm vào giữa icon luôn trúng ô
- *  và luôn nằm trong khung nhìn. reading: số điểm đọc được bên phải la bàn. */
+ *  và luôn nằm trong khung nhìn. reading: số điểm, đã đối chiếu số cạnh la bàn với số cạnh kim cương. */
 data class Task(val x: Int, val y: Int, val reading: Reading, val tapX: Int, val tapY: Int)
 
 fun findCompasses(img: Mat, box: Box, ui: Ui) = findTemplate(img, ui.compass, box, ui.s, COMPASS_THRESHOLD, ui.d(20))
 
-/** Vùng chứa số điểm nằm bên phải icon la bàn ở (x, y). */
-fun numberBoxRightOf(x: Int, y: Int, ui: Ui) = Box(x + ui.d(50), y - ui.d(6), x + ui.d(108), y + ui.d(54))
+/** Vùng chứa số điểm nằm bên phải icon la bàn ở (x, y); dx: dời sang phải bấy nhiêu px máy gốc. */
+fun numberBoxRightOf(x: Int, y: Int, ui: Ui, dx: Int = 0) =
+    Box(x + ui.d(50 + dx), y - ui.d(6), x + ui.d(108 + dx), y + ui.d(54))
 
 /** Các ô nhiệm vụ còn trống nằm trọn trong khung nhìn của lưới, kèm số điểm. */
 fun findTasks(img: Mat, ui: Ui): List<Task> {
@@ -288,7 +292,11 @@ fun findTasks(img: Mat, ui: Ui): List<Task> {
     val tw = ui.compass.cols()
     return findCompasses(img, ui.grid, ui)
         .filter { it.y - ui.d(6) >= ui.grid.y0 && it.y + th + ui.d(6) <= ui.grid.y1 }   // không bị khung nhìn cắt
-        .map { Task(it.x, it.y, readNumber(img, numberBoxRightOf(it.x, it.y, ui), ui), it.x + tw / 2, it.y + th / 2) }
+        .map {
+            val reading = crossCheck(readNumber(img, numberBoxRightOf(it.x, it.y, ui), ui),
+                readNumber(img, numberBoxRightOf(it.x, it.y, ui, SECOND_NUMBER_DX), ui))
+            Task(it.x, it.y, reading, it.x + tw / 2, it.y + th / 2)
+        }
 }
 
 /** Điểm của nhiệm vụ đang chọn trong khung chi tiết. */

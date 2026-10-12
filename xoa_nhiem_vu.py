@@ -64,6 +64,9 @@ BUTTON_THRESHOLD = 0.80
 DIGIT_THRESHOLD = 0.65      # dưới mức này coi như không phải chữ số
 DIGIT_MIN_MARGIN = 0.10     # chữ số khác giống ngang ngửa trong khoảng này vẫn bị coi là khả dĩ
 DIGIT_SIZE = 32
+# Mỗi ô ghi số điểm 2 lần: bên phải la bàn và bên phải viên kim cương (lệch thêm bấy nhiêu px máy gốc). Hai số này
+# luôn bằng nhau (đã kiểm trên mọi ảnh mẫu), nên đọc cả hai để tự kiểm tra.
+SECOND_NUMBER_DX = 100
 # Huy hiệu số thứ tự ô (1, 2, 3...) ở góc trên-trái mỗi ô: vòng tròn cam, chữ số ruột kem viền nâu.
 BADGE_COLS = (150, 438, 726)                # x góc trên-trái huy hiệu ở 3 cột, px máy gốc
 BADGE_TO_COMPASS = (5, 166)                 # la bàn của ô nằm lệch so với huy hiệu bấy nhiêu px máy gốc
@@ -555,9 +558,22 @@ class Task:
     tap_point: tuple    # giữa icon la bàn: luôn nằm trong ô và trong khung nhìn
 
 
-def number_box_right_of(x, y, ui):
-    """Vùng chứa số điểm nằm bên phải icon la bàn ở (x, y)."""
-    return x + ui.d(50), y - ui.d(6), x + ui.d(108), y + ui.d(54)
+def number_box_right_of(x, y, ui, dx=0):
+    """Vùng chứa số điểm nằm bên phải icon la bàn ở (x, y); dx: dời sang phải bấy nhiêu px máy gốc."""
+    return x + ui.d(50 + dx), y - ui.d(6), x + ui.d(108 + dx), y + ui.d(54)
+
+
+def cross_check(first, second):
+    """Gộp 2 lần đọc số điểm của cùng một ô (cạnh la bàn và cạnh kim cương). Chỉ tin khi cả 2 đọc được và cách đọc
+    giống nhất trùng nhau. Khoảng khả dĩ lấy hợp của 2 khoảng, nên kết quả không bao giờ chắc chắn hơn từng lần đọc."""
+    if first.value is None:
+        return first
+    if second.value is None:
+        return Reading(None, None, None, f"{first.value} [{first.detail}], số cạnh kim cương không đọc được [{second.detail}]")
+    if first.value != second.value:
+        return Reading(None, None, None, f"2 số không khớp: {first.value} [{first.detail}] / {second.value} [{second.detail}]")
+    return Reading(first.value, min(first.low, second.low), max(first.high, second.high),
+                   f"{first.detail} / {second.detail}")
 
 
 def find_compasses(img, box, ui):
@@ -572,7 +588,8 @@ def find_tasks(img, ui):
     for x, y, _ in find_compasses(img, ui.grid, ui):
         if y - ui.d(6) < gy0 or y + th + ui.d(6) > gy1:
             continue                                # bị khung nhìn cắt mất một phần
-        reading = read_number(img, number_box_right_of(x, y, ui), ui)
+        reading = cross_check(read_number(img, number_box_right_of(x, y, ui), ui),
+                              read_number(img, number_box_right_of(x, y, ui, SECOND_NUMBER_DX), ui))
         tasks.append(Task(x, y, reading, (x + tw // 2, y + th // 2)))
     return tasks
 
