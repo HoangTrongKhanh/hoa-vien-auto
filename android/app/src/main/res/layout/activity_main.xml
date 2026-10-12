@@ -202,7 +202,7 @@
             <TextView
                 style="@style/Hint"
                 android:layout_marginTop="12dp"
-                android:text="Bài thử Kéo: quãng kéo tính theo px của máy gốc rộng 1080, máy khác tự quy đổi. Bot dùng kéo 548px, 500 ms, giữ 150 ms (danh sách cuộn ~520px)." />
+                android:text="Kéo cuộn danh sách: bot dùng từ lượt quét sau, bài thử Kéo dùng ngay. Quãng kéo tính theo px của máy gốc rộng 1080 (300–660), máy khác tự quy đổi. Mặc định 548px, 500 ms, giữ 150 ms (danh sách cuộn ~520px). Đổi xong nên chạy bài thử Kéo để xem danh sách cuộn đúng chưa." />
 
             <LinearLayout style="@style/Row">
 

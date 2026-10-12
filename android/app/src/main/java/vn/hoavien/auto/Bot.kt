@@ -8,7 +8,9 @@ import kotlinx.coroutines.withContext
 import org.opencv.core.Mat
 import vn.hoavien.auto.vision.BADGES_PER_ROW
 import vn.hoavien.auto.vision.Box
+import vn.hoavien.auto.vision.GRID
 import vn.hoavien.auto.vision.Reading
+import vn.hoavien.auto.vision.SHIFT_BAND
 import vn.hoavien.auto.vision.SHIFT_MATCH_THRESHOLD
 import vn.hoavien.auto.vision.Task
 import vn.hoavien.auto.vision.Ui
@@ -31,14 +33,24 @@ import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import kotlin.math.abs
 
-// Kéo cuộn một bước: đặt tay ở DRAG_FROM_Y (px máy gốc) kéo lên DRAG_DISTANCE trong DRAG_MOVE_MS rồi giữ DRAG_HOLD_MS
-// trước khi nhả để danh sách không trôi. Đo trên Tab S7: game bỏ qua ~28px đầu nên kéo 548px cuộn ~520px.
-// Bước cuộn phải < ~770px (khung nhìn 832px trừ dải điểm 60px) để ô nào cũng có lúc hiện trọn dải điểm.
+// Kéo cuộn một bước: đặt tay ở DRAG_FROM_Y (px máy gốc) kéo lên một quãng rồi giữ một lúc trước khi nhả để danh sách
+// không trôi. Quãng kéo, thời gian kéo, thời gian giữ chỉnh ở mục Nâng cao (Prefs); dưới đây là mặc định.
+// Đo trên Tab S7: game bỏ qua ~DRAG_DEAD_ZONE px đầu nên kéo 548px cuộn ~520px.
 const val DRAG_FROM_Y = 1610
 const val DRAG_DISTANCE = 548
 const val DRAG_MOVE_MS = 500L
 const val DRAG_HOLD_MS = 150L
-private const val EXPECTED_SHIFT = 520
+const val DRAG_DEAD_ZONE = 28
+// Khoảng cho phép của các thông số kéo. Quãng kéo bị giới hạn bởi cách đo độ cuộn: cuộn được tới (cao lưới 832 -
+// dải đo >= MIN_SHIFT_BAND) - SHIFT_ABOVE, và phải < ~770px (khung nhìn trừ dải điểm 60px) để ô nào cũng có lúc hiện
+// trọn dải điểm. Giữ tay > 0 để danh sách không trôi theo quán tính.
+val DRAG_DISTANCE_RANGE = 300..660
+val DRAG_MS_RANGE = 200..2000
+val HOLD_MS_RANGE = 50..1000
+// Cửa sổ tìm độ cuộn quanh mức mong đợi (px máy gốc): đủ hẹp để loại vị trí lệch đúng 1 hàng (±269px).
+private const val SHIFT_ABOVE = 45
+private const val SHIFT_BELOW = 200
+private const val MIN_SHIFT_BAND = 150
 
 // Sau mỗi lần bấm không chờ cố định mà chụp lặp lại tới khi giao diện đổi xong (mỗi lần chụp ~0.33s).
 private const val POLL_FIRST_WAIT = 150L    // chờ trước lần chụp đầu để game kịp phản hồi
@@ -89,6 +101,11 @@ class Bot(private val svc: BotService) {
     private var noDeleteButton = 0          // số ô liên tiếp không có nút Xóa (tài khoản không có chức năng xóa?)
     private var notReadyReason = ""         // lý do lượt gần nhất không quét được, để báo cho người dùng
     private var batteryWarned = false
+
+    // Thông số kéo cuộn của lượt đang chạy (đọc lại từ Nâng cao mỗi lượt).
+    private var dragDistance = DRAG_DISTANCE
+    private var dragMs = DRAG_MOVE_MS
+    private var holdMs = DRAG_HOLD_MS
 
     private fun now() = SystemClock.uptimeMillis()
 
@@ -219,6 +236,7 @@ class Bot(private val svc: BotService) {
         var img = checkReady() ?: return false
         maxPoints = svc.prefs.maxPoints
         maxDeletes = svc.prefs.maxDeletes.takeIf { it > 0 }
+        loadDragSettings()
         deleted = 0
         unreadable = 0
         failures = 0
@@ -260,6 +278,20 @@ class Bot(private val svc: BotService) {
         val reach = if (maxCard > 0) " Đã quét tới ô $maxCard." else ""
         AppLog.i("Xong lượt: đã xóa $deleted, không đọc được $unreadable.$reach Tổng đã xóa từ lúc chạy: $totalDeleted.")
         return true
+    }
+
+    /** Đọc thông số kéo ở Nâng cao (Prefs đã giới hạn trong khoảng cho phép); báo khi khác lượt trước. */
+    private fun loadDragSettings() {
+        val p = svc.prefs
+        val dist = p.dragDistance
+        val move = p.dragMs.toLong()
+        val hold = p.holdMs.toLong()
+        if (dist != dragDistance || move != dragMs || hold != holdMs) {
+            AppLog.i("Kéo cuộn: ${dist}px máy gốc trong $move ms, giữ $hold ms (danh sách cuộn ~${dist - DRAG_DEAD_ZONE}px).")
+        }
+        dragDistance = dist
+        dragMs = move
+        holdMs = hold
     }
 
     /** Màn hình sáng, không bị Game Booster khóa, đang ở bảng Nhiệm Vụ, không còn hộp thoại xóa mở dở.
@@ -474,7 +506,7 @@ class Bot(private val svc: BotService) {
         for (attempt in 0 until confirmDrags) {
             val g = (gap + attempt) % u.dragGaps.size
             if (attempt > 0) delay(END_RETRY_WAIT)  // cho game kịp nạp thêm ô
-            svc.drag(u.dragGaps[g], u.y(DRAG_FROM_Y), u.y(DRAG_FROM_Y - DRAG_DISTANCE), DRAG_MOVE_MS, DRAG_HOLD_MS)
+            svc.drag(u.dragGaps[g], u.y(DRAG_FROM_Y), u.y(DRAG_FROM_Y - dragDistance), dragMs, holdMs)
             delay(SCROLL_WAIT)
             val first = shot()
             val moved = !cpu { gridUnchanged(img, first, u) }
@@ -493,14 +525,17 @@ class Bot(private val svc: BotService) {
             still.release()
         }
         val cur = settled!!
-        // Bước cuộn bình thường: ~EXPECTED_SHIFT. Khoảng tìm loại trừ vị trí lệch đúng 1 hàng (±269px).
-        val expected = u.d(EXPECTED_SHIFT)
-        val full = cpu { gridShift(img, cur, u, expected - u.d(200), expected + u.d(45)) }
+        // Bước cuộn bình thường: quãng kéo trừ đoạn game bỏ qua. Khoảng tìm loại trừ vị trí lệch đúng 1 hàng (±269px).
+        val step = dragDistance - DRAG_DEAD_ZONE
+        val expected = u.d(step)
+        // Dải đo càng cao thì đo được càng ngắn (tới cao lưới - dải): kéo xa thì dùng dải thấp hơn, tối thiểu MIN_SHIFT_BAND.
+        val band = (GRID.height - SHIFT_ABOVE - step).coerceIn(MIN_SHIFT_BAND, SHIFT_BAND)
+        val full = cpu { gridShift(img, cur, u, expected - u.d(SHIFT_BELOW), expected + u.d(SHIFT_ABOVE), band) }
         val result = if (full.score >= SHIFT_MATCH_THRESHOLD) {
             Scan.OK
         } else {
             // Cuộn ít hơn một bước: đã chạm cuối danh sách.
-            val short = cpu { gridShift(img, cur, u, -u.d(20), expected - u.d(200)) }
+            val short = cpu { gridShift(img, cur, u, -u.d(20), expected - u.d(SHIFT_BELOW), band) }
             when {
                 short.score < SHIFT_MATCH_THRESHOLD -> Scan.LOST        // trượt quá đà, có thể sót hàng
                 short.px < u.d(60) -> Scan.END                          // nhích < 1/4 hàng: chỉ là nảy ở cuối

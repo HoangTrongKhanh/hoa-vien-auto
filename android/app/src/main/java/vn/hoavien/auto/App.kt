@@ -31,17 +31,18 @@ class Prefs(context: Context) {
         get() = p.getInt("max_deletes", 0)
         set(v) = p.edit().putInt("max_deletes", v).apply()
 
-    // Thông số bài thử kéo. Quãng kéo tính theo px của máy gốc (rộng 1080).
+    // Thông số kéo cuộn danh sách, dùng cho bot và bài thử Kéo. Quãng kéo tính theo px của máy gốc (rộng 1080).
+    // Giá trị lưu từ bản cũ (cho phép khoảng rộng hơn) được kéo về khoảng cho phép khi đọc.
     var dragDistance: Int
-        get() = p.getInt("drag_distance", DRAG_DISTANCE)
+        get() = p.getInt("drag_distance", DRAG_DISTANCE).coerceIn(DRAG_DISTANCE_RANGE)
         set(v) = p.edit().putInt("drag_distance", v).apply()
 
     var dragMs: Int
-        get() = p.getInt("drag_ms", DRAG_MOVE_MS.toInt())
+        get() = p.getInt("drag_ms", DRAG_MOVE_MS.toInt()).coerceIn(DRAG_MS_RANGE)
         set(v) = p.edit().putInt("drag_ms", v).apply()
 
     var holdMs: Int
-        get() = p.getInt("hold_ms", DRAG_HOLD_MS.toInt())
+        get() = p.getInt("hold_ms", DRAG_HOLD_MS.toInt()).coerceIn(HOLD_MS_RANGE)
         set(v) = p.edit().putInt("hold_ms", v).apply()
 
     var saveImages: Boolean

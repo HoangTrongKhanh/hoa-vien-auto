@@ -63,9 +63,9 @@ class MainActivity : Activity() {
         bindNumber(R.id.maxPoints, prefs::maxPoints, 1..999)
         bindNumber(R.id.intervalMin, prefs::intervalMin, 1..1440)
         bindNumber(R.id.maxDeletes, prefs::maxDeletes, 0..999)
-        bindNumber(R.id.dragDistance, prefs::dragDistance, 50..1200)
-        bindNumber(R.id.dragMs, prefs::dragMs, 20..5000)
-        bindNumber(R.id.holdMs, prefs::holdMs, 0..3000)
+        bindNumber(R.id.dragDistance, prefs::dragDistance, DRAG_DISTANCE_RANGE)
+        bindNumber(R.id.dragMs, prefs::dragMs, DRAG_MS_RANGE)
+        bindNumber(R.id.holdMs, prefs::holdMs, HOLD_MS_RANGE)
         bindCheck(R.id.saveImages, prefs::saveImages)
         bindCheck(R.id.showProbes, prefs::showProbes)
 
